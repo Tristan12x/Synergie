@@ -1,9 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 
-from dateutil.relativedelta import relativedelta
-from datetime import datetime
-
 from core.database.DatabaseManager import JumpData
 
 class TimelineTraining(tk.Frame):

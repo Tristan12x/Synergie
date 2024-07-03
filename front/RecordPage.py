@@ -1,11 +1,7 @@
 from queue import Queue
 import tkinter as tk
-import numpy as np
 
 from core.database.DatabaseManager import DatabaseManager
-from front.DotPage import DotPage
-from front.management.ManagementPage import ManagementPage
-from front.visualization.SkaterPage import SkaterPage
 
 class RecordPage:
     def __init__(self, db_manager : DatabaseManager, infoqueue: Queue) -> None:

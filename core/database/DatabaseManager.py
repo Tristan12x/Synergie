@@ -1,9 +1,8 @@
 from typing import List
 import firebase_admin
 from firebase_admin import credentials
-from firebase_admin import db, firestore
+from firebase_admin import firestore
 import firebase_admin.firestore
-import numpy as np
 
 from dataclasses import dataclass
 from datetime import datetime

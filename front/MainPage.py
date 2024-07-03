@@ -1,5 +1,4 @@
 import tkinter as tk
-import numpy as np
 
 from core.database.DatabaseManager import DatabaseManager
 from front.DotPage import DotPage

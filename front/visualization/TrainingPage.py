@@ -1,8 +1,6 @@
 from datetime import datetime
 import tkinter as tk
-import numpy as np
 from core.database.DatabaseManager import DatabaseManager,TrainingData
-from front.visualization.StatsPage import StatsPage
 from front.visualization.StatsTimelinePage import StatsTimelinePage
 from front.visualization.TimelineSkater import TimelineSkater
 

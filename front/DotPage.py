@@ -1,11 +1,8 @@
-from datetime import datetime
 import threading
-import queue
 import tkinter as tk
-import numpy as np
 
 from core.database.DatabaseManager import DatabaseManager, TrainingData
-from dotConnectionManager import DotConnectionManager
+from core.utils.dotConnectionManager import DotConnectionManager
 
 class DotPage:
     def __init__(self, db_manager : DatabaseManager,  bluetoothEvent : threading.Event) -> None:
