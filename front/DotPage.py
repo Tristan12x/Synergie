@@ -2,14 +2,14 @@ import threading
 import tkinter as tk
 
 from core.database.DatabaseManager import DatabaseManager, TrainingData
-from core.utils.dotConnectionManager import DotConnectionManager
+from core.utils.dotBluetoothManager import DotBluetoothManager
 
 class DotPage:
     def __init__(self, db_manager : DatabaseManager,  bluetoothEvent : threading.Event) -> None:
         self.db_manager = db_manager
         self.bluetoothEvent = bluetoothEvent
         self.bluetoothEvent.set()
-        self.dot_connection_manager = DotConnectionManager()
+        self.dot_connection_manager = DotBluetoothManager()
         self.frame = tk.Frame()
 
     def create_page(self, main) -> None:
@@ -47,10 +47,7 @@ class DotPage:
             StartAndStopButton(self.frame, self.db_manager, device, entry, 5, i)
 
         self.frame.grid()
-
-    def make_management_page(self) -> None:
-        self.frame.grid_forget()
-
+        
 class StartAndStopButton:
     def __init__(self, frame, db_manager : DatabaseManager, device, entry, row : int, column : int) -> None:
         self.db_manager = db_manager
@@ -73,5 +70,3 @@ class StartAndStopButton:
         self.db_manager.set_training_date(current_record, device.getRecordingInfo(device.recordingCount()).startUTC())
         self.db_manager.set_current_record(str(device.deviceId()), "0")
         
-    
-    

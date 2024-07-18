@@ -27,6 +27,7 @@
 #  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #  
 
+from typing import List
 import movelladot_pc_sdk
 from collections import defaultdict
 from threading import Lock
@@ -34,6 +35,8 @@ import numpy as np
 from pynput import keyboard
 from user_settings import *
 import time
+
+from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsPortInfo, XsDotDevice, XsDotUsbDevice, XsString
 
 waitForConnections = True
 
@@ -182,7 +185,10 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
                 devicesId = []
                 for x in self.__connectedDots:
                     devicesId.append(x.deviceId())
-                if not device.deviceId() in devicesId:
+
+                checkDevice = (device.deviceId() not in devicesId)
+                
+                if checkDevice:
                     self.__connectedDots.append(device)
                     print(f"Found a device with Tag: {device.deviceTagName()} @ address: {address}")
             else:
@@ -229,6 +235,42 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
     def resetConnectedDots(self):
         self.__connectedUsbDots = []
         self.__connectedDots = []
+        self.__detectedDots = []
+
+    def setConnectedUsbDots(self, usbDevices : List[XsDotUsbDevice]):
+        self.__connectedUsbDots = usbDevices
+
+    def setConnectedDots(self, devices : List[XsDotDevice]):
+        self.__connectedDots = devices
+
+    def connectOneUsbDot(self,portInfo):
+        self.__manager.openPort(portInfo)
+        device = self.__manager.usbDevice(portInfo.deviceId())
+        if device is not None:
+            self.__connectedUsbDots.append(device)
+
+    def reconnectUsbDot(self, portInfoArray : List[XsPortInfo]):
+        for portInfo in portInfoArray:
+            self.connectOneUsbDot(portInfo)
+
+    def reconnectBtDot(self, bluetoothAdress : List[str]):
+        for btPort in bluetoothAdress:
+            portInfo = XsPortInfo(XsString(f"BT:{btPort}"), 0)
+
+            if not self.__manager.openPort(portInfo):
+                print(f"Connection to Device {btPort} failed, retrying...")
+                print(f"Device {btPort} retry connected:")
+                if not self.__manager.openPort(portInfo):
+                    print(f"Could not open DOT. Reason: {self.__manager.lastResultText()}")
+
+            device = self.__manager.device(portInfo.deviceId())
+            
+            devicesId = [] 
+            for x in self.__connectedDots:
+                devicesId.append(x.deviceId())
+            if not device.deviceId() in devicesId:
+                self.__connectedDots.append(device)
+                print(f"Found a device with Tag: {device.deviceTagName()} @ address: {btPort}")
 
     def detectUsbDevices(self):
         """
@@ -243,21 +285,21 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         """
         return self.__manager
 
-    def detectedDots(self):
+    def detectedDots(self) -> List[XsPortInfo]:
         """
         Returns:
              An XsPortInfoArray containing information on detected Movella DOT devices
         """
         return self.__detectedDots
 
-    def connectedDots(self):
+    def connectedDots(self)-> List[XsDotDevice]:
         """
         Returns:
             A list containing an XsDotDevice pointer for each Movella DOT device connected via Bluetooth
         """
         return self.__connectedDots
 
-    def connectedUsbDots(self):
+    def connectedUsbDots(self) -> List[XsDotUsbDevice]:
         """
         Returns:
              A list containing an XsDotUsbDevice pointer for each Movella DOT device connected via USB */

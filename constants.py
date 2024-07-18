@@ -47,6 +47,10 @@ sessions = {
         "0406": {
             "path": "0406/1019",
             "sample_time_fine_synchro": 3541152851
+        },
+        "1007": {
+            "path": "1007/1006",
+            "sample_time_fine_synchro": 3523005443 + 17000000
         }
     }
 

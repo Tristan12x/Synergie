@@ -6,17 +6,18 @@ import os
 from core.data_treatment.data_generation.exporter import export
 from core.database.DatabaseManager import *
 from front.MainPage import MainPage
-from core.utils.dotConnectionManager import *
+from core.utils.dotBluetoothManager import *
 
 class App:
+
     def __init__(self, master):
         self.db_manager = DatabaseManager()
         self.bluetoothEvent = threading.Event()
         MainPage(self.db_manager, self.bluetoothEvent, master)
-        self.dot_connection_manager = DotConnectionManager()
-        self.dico_device = {}
+        self.dot_connection_manager = DotBluetoothManager()
 
-        #DevPage(master)
+        self.bluetoothDevices = self.dot_connection_manager.firstConnection()
+
         detection_thread = threading.Thread(target=self.detectDots, args=())
         detection_thread.daemon = True
         detection_thread.start()
@@ -39,7 +40,7 @@ class App:
                 process_thread.start()
                 event.wait()
             time.sleep(1)
-    
+
     def export_file(self, path, event : threading.Event):
         skater_id, df = export(path)
         print("End of process")
@@ -61,7 +62,7 @@ class App:
         while True:
             if not self.bluetoothEvent.is_set():
                 self.dot_connection_manager.dotConnection(self.db_manager)
-            time.sleep(1)  
+            time.sleep(1)
 
 root = tk.Tk()
 myapp = App(root)

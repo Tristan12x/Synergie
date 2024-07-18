@@ -46,7 +46,10 @@ class SkaterData:
 class DatabaseManager:
     def __init__(self):
         cred = credentials.Certificate('s2m-skating-firebase-adminsdk-3ofmb-8552d58146.json')
-        firebase_admin.initialize_app(cred)
+        try:
+            firebase_admin.initialize_app(cred)
+        except :
+            pass
         self.db = firestore.client()
 
     def save_skater_data(self, data : SkaterData) -> int:
@@ -107,7 +110,7 @@ class DatabaseManager:
     def get_current_record(self, device_id) -> str:
         return self.db.collection("dots").document(device_id).get().get("current_record")
     
-    def get_bluetooth_address(self, device_list) -> List[str]:
+    def get_bluetooth_address(self, device_list : List[str]) -> List[str]:
         bluetooth_list = []
         for device in device_list:
             bluetooth_list.append(self.db.collection("dots").document(device).get().get("bluetooth_address"))
