@@ -36,23 +36,20 @@ class trainingSession:
     This class is meant to describe a training session in a sport context. Not to be confused with a training session in a machine learning context (class training)
     contains the preprocessed dataframe and the jumps
     """
-    def __init__(self, path: str, sampleTimefineSynchro: int = 0):
+    def __init__(self, df: pd.DataFrame, sampleTimefineSynchro: int = 0):
         """
         :param path: path of the CSV
         :param synchroFrame: the frame where the synchro tap is
         """
-        df = self.__load_and_preprocess_data(path, sampleTimefineSynchro)
+        df = self.__load_and_preprocess_data(df, sampleTimefineSynchro)
         self.initFromDataFrame(df)
-        self.filename = path.split('/')[-1]
 
-    def __load_and_preprocess_data(self, path: str, sampleTimefineSynchro: int = 0) -> pd.DataFrame:
+    def __load_and_preprocess_data(self, df: pd.DataFrame, sampleTimefineSynchro: int = 0) -> pd.DataFrame:
         """
         loads a dataframe from a csv, and preprocess data
         :param self: path to the csv file
         :return: the dataframe with preprocessed fields
         """
-
-        df = pd.read_csv(path, sep=',')
         df = df.astype({'PacketCounter': 'int64', 'SampleTimeFine': 'ulonglong', 'Euler_X': 'float64', 'Euler_Y': 'float64','Euler_Z': 'float64', 'Acc_X': 'float64', 'Acc_Y': 'float64', 'Acc_Z': 'float64', 'Gyr_X': 'float64', 'Gyr_Y': 'float64', 'Gyr_Z': 'float64'})
 
         if sampleTimefineSynchro != 0:

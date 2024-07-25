@@ -1,72 +1,41 @@
-import threading
+import os
 import tkinter as tk
+import ttkbootstrap as ttkb
+from tkinter.font import BOLD, Font
+from typing import List
+from PIL import ImageTk, Image
 
-from core.database.DatabaseManager import DatabaseManager, TrainingData
-from core.utils.dotBluetoothManager import DotBluetoothManager
+from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsDotDevice
 
-class DotPage:
-    def __init__(self, db_manager : DatabaseManager,  bluetoothEvent : threading.Event) -> None:
-        self.db_manager = db_manager
-        self.bluetoothEvent = bluetoothEvent
-        self.bluetoothEvent.set()
-        self.dot_connection_manager = DotBluetoothManager()
-        self.frame = tk.Frame()
+class DotPage(ttkb.Frame):
+    def __init__(self, parent, **kwargs) -> None:
+        super().__init__(parent, **kwargs)
+        self.parent = parent
+        self.frame = ttkb.Frame(self.parent)
+        self.imgs = {}
+        for f in os.listdir("img"):
+            self.imgs[f.split(".")[0][-1]] = ImageTk.PhotoImage(Image.open(f"img/{f}").resize((116, 139)))
 
-    def create_page(self, main) -> None:
-        self.main = main
-        tk.Button(self.frame, text='Scan for dots',
-                  command=self.make_dot_connection_page).grid(row=0, column=0, columnspan=2)
-        tk.Button(self.frame, text='Go to Main Page',
-                  command=self.return_main_page).grid(row=10, column=10, sticky="se")
-        self.frame.grid()
-    
-    def return_main_page(self) -> None:
-        self.bluetoothEvent.clear()
-        self.frame.grid_forget()
-        self.main.grid()
-
-    def make_dot_connection_page(self) -> None:
+    def make_dot_connection_page(self, dotsconnected : List[XsDotDevice]) -> None:
         self.frame.destroy()
-        self.frame = tk.Frame()
-        self.create_page(self.main)
-        dicoDevice = {}
-        dotsconnected = self.dot_connection_manager.connectToDots()
+        self.frame = ttkb.Frame(self.parent)
+        self.frame.grid_rowconfigure(0, weight=1)
+        self.frame.grid_rowconfigure(1, weight=1)
+        self.frame.grid_rowconfigure(2, weight=1)
+        self.frame.grid_rowconfigure(3, weight=1)
         for i,device in enumerate(dotsconnected):
-            dicoDevice[str(device.deviceId())] = device.deviceTagName()
-            tk.Label(self.frame, text=device.deviceTagName(),).grid(row=1, column=i)
-            tk.Label(self.frame, text=f"Battery : {device.batteryLevel()}%").grid(row=2, column=i)
-            if device.recordingCount() == -1:
-                tk.Label(self.frame, text="Recording On",).grid(row=3, column=i)
-            else:
-                tk.Label(self.frame, text="Recording Off",).grid(row=3, column=i)
-            
-            entryvar = tk.StringVar()
-            entry = tk.Entry(self.frame, textvariable=entryvar)
-            entry.grid(row=4,column=i) 
-
-            StartAndStopButton(self.frame, self.db_manager, device, entry, 5, i)
-
-        self.frame.grid()
-        
-class StartAndStopButton:
-    def __init__(self, frame, db_manager : DatabaseManager, device, entry, row : int, column : int) -> None:
-        self.db_manager = db_manager
-        tk.Button(frame, text="Start Recording", command=lambda : self.startRecording(device, entry)).grid(row=row, column=column, padx=5)
-        tk.Button(frame, text="Stop Recording", command=lambda : self.stopRecording(device)).grid(row=row+1, column=column, padx=5)
-    
-    def startRecording(self, device, entry):
-        skater_id = self.db_manager.get_skater_id_from_name(entry.get())
-        if len(skater_id) > 0:
-            device.startRecording()
-            print(f"{device.deviceTagName()} Recording started for {entry.get()}")
-            new_training = TrainingData(0, skater_id[0].id, 0, str(device.deviceId()))
-            self.db_manager.set_current_record(str(device.deviceId()), self.db_manager.save_training_data(new_training))
-        else:
-            print("Unknown skater")
-    
-    def stopRecording(self, device):
-        device.stopRecording()
-        current_record = self.db_manager.get_current_record(str(device.deviceId()))
-        self.db_manager.set_training_date(current_record, device.getRecordingInfo(device.recordingCount()).startUTC())
-        self.db_manager.set_current_record(str(device.deviceId()), "0")
-        
+            self.frame.grid_columnconfigure(i, weight=1, pad=50)
+            label = tk.Label(self.frame, image=self.imgs[device.deviceTagName()])
+            label.grid(row=0, column=i)
+            if device.isCharging(): 
+                charging = "Yes" 
+            else: 
+                charging = "No"
+            tk.Label(self.frame, text=f"Charging : {charging}", font=Font(self.frame, size=15, weight=BOLD)).grid(row=1, column=i)
+            tk.Label(self.frame, text=f"Battery : {device.batteryLevel()}%", font=Font(self.frame, size=15, weight=BOLD)).grid(row=2, column=i)
+            if device.recordingCount() == -1: 
+                recording = "Yes" 
+            else: 
+                recording = "No"
+            tk.Label(self.frame, text=f"Recording {recording}", font=Font(self.frame, size=15, weight=BOLD)).grid(row=3, column=i)
+        self.frame.grid(sticky="nsew")

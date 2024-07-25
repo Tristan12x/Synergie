@@ -1,17 +1,6 @@
-from queue import Queue
-import time
-from typing import List
-import os
-import numpy as np
-import pandas as pd
-from core.database.DatabaseManager import DatabaseManager, TrainingData
 from core.utils.dotBluetoothManager import DotBluetoothManager
 from core.utils.dotUsbManager import DotUsbManager
-from front.RecordPage import RecordPage
 from xdpchandler import *
-import asyncio
-if os.name == 'nt':
-    from winrt.windows.devices import radios
 
 class DotManager:
     def __init__(self, db_manager) -> None:

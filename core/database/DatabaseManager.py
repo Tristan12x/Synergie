@@ -7,6 +7,8 @@ import firebase_admin.firestore
 from dataclasses import dataclass
 from datetime import datetime
 
+from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsDeviceId
+
 @dataclass
 class JumpData:
     jump_id : int
@@ -15,13 +17,17 @@ class JumpData:
     jump_rotations : float
     jump_success : bool
     jump_time : int
+    jump_max_speed : float
+    jump_length : float
 
     def to_dict(self):
         return {"training_id" : self.training_id,
          "jump_type" : self.jump_type,
          "jump_rotations" : self.jump_rotations,
          "jump_success" : self.jump_success,
-         "jump_time" : self.jump_time}
+         "jump_time" : self.jump_time,
+         "jump_max_speed" : self.jump_max_speed,
+         "jump_length" : self.jump_length}
 
 @dataclass
 class TrainingData:
@@ -105,14 +111,17 @@ class DatabaseManager:
         self.db.collection("trainings").document(training_id).update({"training_date" : date})
 
     def set_current_record(self, device_id, current_record) -> None:
+        print(current_record)
         self.db.collection("dots").document(device_id).update({"current_record" : current_record})
 
     def get_current_record(self, device_id) -> str:
         return self.db.collection("dots").document(device_id).get().get("current_record")
-    
+
     def get_bluetooth_address(self, device_list : List[str]) -> List[str]:
         bluetooth_list = []
         for device in device_list:
             bluetooth_list.append(self.db.collection("dots").document(device).get().get("bluetooth_address"))
         return bluetooth_list
-            
+
+    def get_tag(self, deviceId):
+        return self.db.collection("dots").document(deviceId).get().get("tag_name")

@@ -36,7 +36,7 @@ from pynput import keyboard
 from user_settings import *
 import time
 
-from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsPortInfo, XsDotDevice, XsDotUsbDevice, XsString
+from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsPortInfo, XsDotDevice, XsDotUsbDevice, XsString, XsDataPacket, XsDeviceId, XsDotConnectionManager
 
 waitForConnections = True
 
@@ -50,7 +50,7 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
     def __init__(self, max_buffer_size=5):
         movelladot_pc_sdk.XsDotCallback.__init__(self)
 
-        self.__manager = 0
+        self.__manager : XsDotConnectionManager = 0
 
         self.__lock = Lock()
         self.__errorReceived = False
@@ -60,7 +60,8 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         self.__closing = False
         self.__progressCurrent = 0
         self.__progressTotal = 0
-        self.__packetsReceived = 0
+        self.__packetsCount = 0
+        self.__packetsReceived = []
 
         self.__detectedDots = list()
         self.__connectedDots = list()
@@ -178,7 +179,7 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
                         print(f"Could not open DOT. Reason: {self.__manager.lastResultText()}")
                         continue
 
-                device = self.__manager.device(portInfo.deviceId())
+                device : XsDotDevice = self.__manager.device(portInfo.deviceId())
                 if device is None:
                     continue
 
@@ -271,6 +272,17 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
             if not device.deviceId() in devicesId:
                 self.__connectedDots.append(device)
                 print(f"Found a device with Tag: {device.deviceTagName()} @ address: {btPort}")
+
+    def disconnecteUsbDot(self, device : XsDotUsbDevice):
+        if device in self.__connectedUsbDots:
+            self.__connectedUsbDots.remove(device)
+            self.__manager.closePort(device.portInfo())
+
+    def disconnecteUsbDotFromId(self, deviceId : XsDeviceId):
+        device = self.__manager.device(deviceId)
+        if device in self.__connectedUsbDots:
+            self.__connectedUsbDots.remove(device)
+            self.__manager.closePort(device.portInfo())
 
     def detectUsbDevices(self):
         """
@@ -504,7 +516,7 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         print(f"\n{portInfo.bluetoothAddress()}  Firmware Update done. Result: {movelladot_pc_sdk.XsDotFirmwareUpdateResultToString(result)}")
         self.__updateDone = True
 
-    def onRecordingStopped(self, device):
+    def onRecordingStopped(self, device : XsDotDevice):
         """
         Called when a recording has stopped. Prints to screen.
         Parameters:
@@ -537,7 +549,7 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         """
         print(f"\n{device.deviceTagName()} Button clicked at {timestamp}")
 
-    def onRecordedDataAvailable(self, device, packet):
+    def onRecordedDataAvailable(self, device, packet : XsDataPacket):
         """
         Called when new data has been received from a device that is exporting a recording
 
@@ -546,8 +558,12 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         Parameters:
             device: The device that initiated the callback.
             packet: The data packet that has been received.
-        """
-        self.__packetsReceived += 1
+        """ 
+        self.__packetsCount += 1
+        euler = packet.orientationEuler()
+        captor = packet.calibratedData()
+        data = np.concatenate([[int(self.__packetsCount), packet.sampleTimeFine(), euler.x(), euler.y(), euler.z()], captor.m_acc, captor.m_gyr])
+        self.__packetsReceived.append(data)
 
     def onRecordedDataDone(self, device):
         """

@@ -1,17 +1,16 @@
-from queue import Queue
+from threading import Event, Thread
 import time
 from typing import List
 import os
 import numpy as np
 import pandas as pd
-from core.database.DatabaseManager import DatabaseManager, TrainingData
-from front.RecordPage import RecordPage
+
+from core.data_treatment.data_generation.exporter import export
+from core.database.DatabaseManager import DatabaseManager, JumpData
 from xdpchandler import *
 import asyncio
 if os.name == 'nt':
     from winrt.windows.devices import radios
-
-from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsDotDevice
 
 async def bluetooth_power(turn_on):
     if os.name == 'nt':
@@ -29,6 +28,9 @@ class DotUsbManager:
     def __init__(self, db_manager : DatabaseManager):
         self.db_manager = db_manager
         self.portInfoArray = []
+        self.usbExporting = []
+        self.usbDevices = []
+        self.exporting = ""
         self.usbXdpcHandler = XdpcHandler()
         if not self.usbXdpcHandler.initialize():
             self.usbXdpcHandler.cleanup()
@@ -45,9 +47,9 @@ class DotUsbManager:
 
         while len(self.usbXdpcHandler.connectedUsbDots()) < len(self.usbXdpcHandler.detectedDots()):
             self.usbXdpcHandler.connectDots()
+        self.usbDevices = np.vectorize(lambda x : str(x.deviceId()), otypes=[str])(self.usbXdpcHandler.connectedUsbDots())
 
     def checkUsbConnection(self) -> tuple[List[str], List[str]]:
-        usbDevices = np.vectorize(lambda x : x.deviceId(), otypes=[str])(self.usbXdpcHandler.connectedUsbDots())
         if not self.usbXdpcHandler.initialize():
             self.usbXdpcHandler.cleanup()
             exit(-1)
@@ -56,79 +58,137 @@ class DotUsbManager:
         lastConnected = []
         lastDisconnected = []
 
-        newConnected = np.vectorize(lambda x : x.deviceId(), otypes=[str])(self.usbXdpcHandler.connectedUsbDots())
+        if self.exporting != "":
+            self.usbExporting.remove(self.exporting)
+            self.exporting = ""
+        newConnected = np.vectorize(lambda x : str(x.deviceId()), otypes=[str])(self.usbXdpcHandler.connectedUsbDots())
+        newConnected = np.concatenate([newConnected,self.usbExporting], dtype = str)
 
-        if len(newConnected)>len(usbDevices):
+        if len(newConnected)>len(self.usbDevices):
             for device in newConnected:
-                if device not in usbDevices:
+                if device not in self.usbDevices:
                     lastConnected.append(device)
-        else:
-            for device in usbDevices:
+        elif len(newConnected)<len(self.usbDevices):
+            for device in self.usbDevices:
                 if device not in newConnected:
                     lastDisconnected.append(device)
-
+        else:
+            pass
+        
+        self.usbDevices = newConnected
         return lastConnected,lastDisconnected
     
-    def export_data(self, lastConnected: List[XsDotDevice]):
-        exportData = movelladot_pc_sdk.XsIntArray()
-        exportData.push_back(movelladot_pc_sdk.RecordingData_Timestamp)
-        exportData.push_back(movelladot_pc_sdk.RecordingData_Euler)
-        exportData.push_back(movelladot_pc_sdk.RecordingData_Acceleration)
-        exportData.push_back(movelladot_pc_sdk.RecordingData_AngularVelocity)
+    def export_data_thread(self, deviceId : str, extractEvent : Event):
+        self.usbExporting.append(deviceId)
+        export_thread = Thread(target=self.export_data, args=([deviceId, extractEvent]))
+        export_thread.daemon = True
+        export_thread.start()
+    
+    def export_data(self, deviceId: str, extractEvent : Event):
+        print("Exporting data")
+        self.exporting = True
 
-        for device in lastConnected:
-            for recordingIndex in range(1, device.recordingCount()+1):
-                recInfo = device.getRecordingInfo(recordingIndex)
-                if recInfo.empty():
-                    print(f'Could not get recording info. Reason: {device.lastResultText()}')
+        self.usbXdpcHandler.reconnectUsbDot(self.portInfoArray)
 
-                dateRecord = recInfo.startUTC()
-                trainings = self.db_manager.find_training(dateRecord, str(device.deviceId()))
-                if len(trainings) > 0:
-                    training = trainings[0]
-                    csvFilename = f"data/raw/{training.id}_{training.get('skater_id')}_{dateRecord}.csv"
+        for d in self.usbXdpcHandler.connectedUsbDots():
+            if str(d.deviceId()) == deviceId:
+                device = d
+                break
 
-                    if not device.selectExportData(exportData):
-                        print(f'Could not select export data. Reason: {device.lastResultText()}')
-                    elif not device.enableLogging(csvFilename):
-                        print(f'Could not open logfile for data export. Reason: {device.lastResultText()}')
-                    elif not device.startExportRecording(recordingIndex):
-                        print(f'Could not export recording. Reason: {device.lastResultText()}')
-                    else:
-                        # Sleeping for max 10 seconds...
-                        startTime = movelladot_pc_sdk.XsTimeStamp_nowMs()
-                        while not self.usbXdpcHandler.exportDone() and movelladot_pc_sdk.XsTimeStamp_nowMs() - startTime <= 10000:
-                            time.sleep(0.1)
+        portInfo = device.portInfo()
+        deviceXsId = device.deviceId()
+        nbRecords = device.recordingCount()
+        self.usbXdpcHandler.disconnecteUsbDot(device)
 
-                        if self.usbXdpcHandler.exportDone():
-                            print('File export finished!')
-                        else:
-                            print('Done sleeping, aborting export for demonstration purposes.')
-                            if not device.stopExportRecording():
-                                print(f'Device stop export failed. Reason: {device.lastResultText()}')
-                            else:
-                                print('Device export stopped')
+        if nbRecords == -1 :
+            print("No record to export")
+        else :
+            print(f"{nbRecords} records available")
 
-                    device.disableLogging()
-                    df = pd.read_csv(f"{csvFilename}")
-                    new_df = df[["SampleTimeFine","Euler_X","Euler_Y","Euler_Z","Acc_X","Acc_Y","Acc_Z","Gyr_X","Gyr_Y","Gyr_Z"]]
-                    new_name  = f"data/new/{csvFilename.split('/')[-1]}"
-                    new_df.to_csv(new_name,index=True, index_label="PacketCounter")
-            device.eraseFlash()
-            print("You can disconnect the dot")
-        self.usbXdpcHandler.cleanup()
+        for recordingIndex in range(1, nbRecords+1):
+            print(f"Exporting record {recordingIndex}")
+            self.usbXdpcHandler.disconnecteUsbDotFromId(deviceXsId)
+            exportXdpcHandler = XdpcHandler()
+            if not exportXdpcHandler.initialize():
+                exportXdpcHandler.cleanup()
+                exit(-1)
+            while len(exportXdpcHandler.connectedUsbDots()) < 1:
+                self.usbXdpcHandler.disconnecteUsbDot(device)
+                exportXdpcHandler.reconnectUsbDot([portInfo])
+            device = exportXdpcHandler.connectedUsbDots()[0]
+            recInfo = device.getRecordingInfo(recordingIndex)
+            if recInfo.empty():
+                print(f'Could not get recording info. Reason: {device.lastResultText()}')
+
+            dateRecord = recInfo.startUTC()
+            trainings = self.db_manager.find_training(dateRecord, str(device.deviceId()))
+            if len(trainings) > 0:
+                exportData = movelladot_pc_sdk.XsIntArray()
+                exportData.push_back(movelladot_pc_sdk.RecordingData_Timestamp)
+                exportData.push_back(movelladot_pc_sdk.RecordingData_Euler)
+                exportData.push_back(movelladot_pc_sdk.RecordingData_Acceleration)
+                exportData.push_back(movelladot_pc_sdk.RecordingData_AngularVelocity)
+                training = trainings[0]
+
+                if not device.selectExportData(exportData):
+                    print(f'Could not select export data. Reason: {device.lastResultText()}')
+                elif not device.startExportRecording(recordingIndex):
+                    print(f'Could not export recording. Reason: {device.lastResultText()}')
+                else:
+                    while not exportXdpcHandler.exportDone():
+                        time.sleep(0.1)
+                    print('File export finished!')
+                    df = pd.DataFrame.from_records(exportXdpcHandler.packetsReceived(), columns=["PacketCounter","SampleTimeFine","Euler_X","Euler_Y","Euler_Z","Acc_X","Acc_Y","Acc_Z","Gyr_X","Gyr_Y","Gyr_Z"])
+
+            self.predict_training(training.id, training.get('skater_id'), df)
+            exportXdpcHandler.resetConnectedDots()
+            exportXdpcHandler.cleanup()
+
+        self.usbXdpcHandler.disconnecteUsbDotFromId(deviceXsId)
+
+        eraseXdpcHandler = XdpcHandler()
+        if not eraseXdpcHandler.initialize():
+            eraseXdpcHandler.cleanup()
+            exit(-1)
+        while len(eraseXdpcHandler.connectedUsbDots()) < 1:
+            self.usbXdpcHandler.disconnecteUsbDot(device)
+            eraseXdpcHandler.reconnectUsbDot([portInfo])
+        device = eraseXdpcHandler.connectedUsbDots()[0]
+        device.eraseFlash()
+        print("You can disconnect the dot")
+        eraseXdpcHandler.resetConnectedDots()
+        eraseXdpcHandler.cleanup()
+
+        self.exporting = deviceId
+        extractEvent.set()
+
+    def predict_training(self, training_id, skater_id, df : pd.DataFrame):
+        df = export(skater_id, df)
+        print("End of process")
+        for iter,row in df.iterrows():
+            jump_time_min, jump_time_sec = row["videoTimeStamp"].split(":")
+            jump_time = '{:02d}:{:02d}'.format(int(jump_time_min), int(jump_time_sec))
+            val_rot = float(row["rotations"])
+            if row["type"] != 5:
+                val_rot = np.ceil(val_rot)
+            else:
+                val_rot = np.ceil(val_rot-0.5)+0.5
+            jump_data = JumpData(0, training_id, int(row["type"]), val_rot, bool(row["success"]), jump_time, float(row["rotation_speed"]), float(row["length"]))
+            self.db_manager.save_jump_data(jump_data)
 
     def getConnectedUsbDots(self) -> List[XsDotUsbDevice]:
         return self.usbXdpcHandler.connectedUsbDots()
     
     def getConnectedUsbDotsId(self) -> List[str]:
-        return np.vectorize(lambda x : x.deviceId(),otypes=[str])(self.usbXdpcHandler.connectedUsbDots())
+        return np.vectorize(lambda x : str(x.deviceId()),otypes=[str])(self.usbXdpcHandler.connectedUsbDots())
 
-    def showExportData(self, devicesId : List[str]):
-        for device in self.usbXdpcHandler.connectedUsbDots():
-            if device.deviceId in devicesId:
-                print(f"There are {device.recordingCount()} trainings saved")
-                for index in range(1, device.recordingCount()+1):
-                    print(f"Export {index}")
-                    estimated_time = round(device.getRecordingInfo(index).storageSize()/(237568*8),0) + 1 
-                    print(f"Estimated exporting time : {estimated_time} min")
+    def getExportEstimatedTime(self, deviceId : str) -> int:
+        device = 0
+        for d in self.usbXdpcHandler.connectedUsbDots():
+            if str(d.deviceId()) == deviceId:
+                device = d
+        estimatedTime = 0
+        for index in range(1, device.recordingCount()+1):
+            estimatedTime = estimatedTime + round(device.getRecordingInfo(index).storageSize()/(237568*8),0) 
+        estimatedTime = estimatedTime + 1
+        return estimatedTime
