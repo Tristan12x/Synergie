@@ -30,7 +30,7 @@ class DotUsbManager:
         self.portInfoArray = []
         self.usbExporting = []
         self.usbDevices = []
-        self.exporting = ""
+        self.exporting = []
         self.usbXdpcHandler = XdpcHandler()
         if not self.usbXdpcHandler.initialize():
             self.usbXdpcHandler.cleanup()
@@ -58,9 +58,9 @@ class DotUsbManager:
         lastConnected = []
         lastDisconnected = []
 
-        if self.exporting != "":
-            self.usbExporting.remove(self.exporting)
-            self.exporting = ""
+        for deviceId in self.exporting:
+            self.usbExporting.remove(deviceId)
+            self.exporting.remove(deviceId)
         newConnected = np.vectorize(lambda x : str(x.deviceId()), otypes=[str])(self.usbXdpcHandler.connectedUsbDots())
         newConnected = np.concatenate([newConnected,self.usbExporting], dtype = str)
 
@@ -80,27 +80,28 @@ class DotUsbManager:
     
     def export_data_thread(self, deviceId : str, extractEvent : Event):
         self.usbExporting.append(deviceId)
-        export_thread = Thread(target=self.export_data, args=([deviceId, extractEvent]))
-        export_thread.daemon = True
-        export_thread.start()
-    
-    def export_data(self, deviceId: str, extractEvent : Event):
-        print("Exporting data")
-        self.exporting = True
-
         self.usbXdpcHandler.reconnectUsbDot(self.portInfoArray)
-
+        device = None
         for d in self.usbXdpcHandler.connectedUsbDots():
             if str(d.deviceId()) == deviceId:
                 device = d
                 break
+        if device is None:
+            print("Error : device not found")
+        else:
+            export_thread = Thread(target=self.export_data, args=([device, extractEvent]))
+            export_thread.daemon = True
+            export_thread.start()
+    
+    def export_data(self, device: XsDotUsbDevice, extractEvent : Event):
+        print("Exporting data")
 
         portInfo = device.portInfo()
         deviceXsId = device.deviceId()
         nbRecords = device.recordingCount()
         self.usbXdpcHandler.disconnecteUsbDot(device)
 
-        if nbRecords == -1 :
+        if nbRecords <= 0 :
             print("No record to export")
         else :
             print(f"{nbRecords} records available")
@@ -159,7 +160,7 @@ class DotUsbManager:
         eraseXdpcHandler.resetConnectedDots()
         eraseXdpcHandler.cleanup()
 
-        self.exporting = deviceId
+        self.exporting.append(str(deviceXsId))
         extractEvent.set()
 
     def predict_training(self, training_id, skater_id, df : pd.DataFrame):

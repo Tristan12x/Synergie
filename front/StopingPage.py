@@ -62,7 +62,8 @@ class StopingPage:
         self.frame.grid()
         self.window.update()
         time.sleep(1)
-        extractEvent = threading.Event()
-        ExtractingPage(self.deviceId, self.db_manager, extractEvent)
-        self.dot_manager.usb.export_data_thread(self.deviceId, extractEvent)
+        if recordStopped :
+            extractEvent = threading.Event()
+            ExtractingPage(self.deviceId, self.db_manager, extractEvent)
+            self.dot_manager.usb.export_data_thread(self.deviceId, extractEvent)
         self.window.destroy()

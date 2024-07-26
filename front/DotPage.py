@@ -31,11 +31,11 @@ class DotPage(ttkb.Frame):
                 charging = "Yes" 
             else: 
                 charging = "No"
-            tk.Label(self.frame, text=f"Charging : {charging}", font=Font(self.frame, size=15, weight=BOLD)).grid(row=1, column=i)
-            tk.Label(self.frame, text=f"Battery : {device.batteryLevel()}%", font=Font(self.frame, size=15, weight=BOLD)).grid(row=2, column=i)
+            tk.Label(self.frame, text=f"Charging : {charging}", font=Font(self.frame, size=15, weight=BOLD)).grid(row=1, column=i, sticky="w")
+            tk.Label(self.frame, text=f"Battery : {device.batteryLevel()}%", font=Font(self.frame, size=15, weight=BOLD)).grid(row=2, column=i, sticky="w")
             if device.recordingCount() == -1: 
-                recording = "Yes" 
+                recording = "recording" 
             else: 
-                recording = "No"
-            tk.Label(self.frame, text=f"Recording {recording}", font=Font(self.frame, size=15, weight=BOLD)).grid(row=3, column=i)
+                recording = device.recordingCount()
+            tk.Label(self.frame, text=f"Number of records : {recording}", font=Font(self.frame, size=15, weight=BOLD)).grid(row=3, column=i, sticky="w")
         self.frame.grid(sticky="nsew")

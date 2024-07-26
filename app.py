@@ -16,7 +16,7 @@ class App:
         self.dot_manager = DotManager(self.db_manager)
         self.root = root
 
-        self.mainPage = MainPage([], self.dot_manager, self.root)
+        self.mainPage = MainPage([], self.dot_manager, self.db_manager, self.root)
 
         threading.Thread(target=self.initialise, daemon=True).start()
 
