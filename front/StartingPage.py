@@ -3,15 +3,14 @@ import time
 from tkinter.font import BOLD, Font
 import ttkbootstrap as ttkb
 
+from DotDevice import DotDevice
 from core.database.DatabaseManager import DatabaseManager, TrainingData
-from core.utils.dotManager import DotManager
 
 class StartingPage:
-    def __init__(self, deviceId : str, dot_manager : DotManager, db_manager : DatabaseManager, event : threading.Event) -> None:
-        self.deviceId = deviceId
+    def __init__(self, device : DotDevice, db_manager : DatabaseManager, event : threading.Event) -> None:
+        self.device = device
         self.db_manager = db_manager
-        self.dot_manager = dot_manager
-        self.deviceTag = self.db_manager.get_tag(self.deviceId)
+        self.deviceTag = self.device.deviceTagName()
         self.event = event
         self.skaters = db_manager.get_all_skaters()
         self.window = ttkb.Toplevel(title="Confirmation", size=(1000,400))
@@ -35,9 +34,10 @@ class StartingPage:
         self.window.grid()
 
     def startRecord(self ,skaterId: str):
-        new_training = TrainingData(0, skaterId, 0, self.deviceId)
-        self.db_manager.set_current_record(self.deviceId, self.db_manager.save_training_data(new_training))
-        recordStarted = self.dot_manager.bluetooth.startRecordDots(self.deviceId)
+        deviceId = self.device.deviceId()
+        new_training = TrainingData(0, skaterId, 0, deviceId)
+        self.db_manager.set_current_record(deviceId, self.db_manager.save_training_data(new_training))
+        recordStarted = self.device.startRecord()
         self.event.set()
         self.frame.destroy()
         self.frame = ttkb.Frame(self.window)

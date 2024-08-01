@@ -3,16 +3,15 @@ from tkinter.font import BOLD, Font
 from typing import List
 import ttkbootstrap as ttkb
 
+from DotDevice import DotDevice
 from core.database.DatabaseManager import DatabaseManager
 from core.utils.dotManager import DotManager
 from front.DotPage import DotPage
 
-from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsDotDevice
-
 from front.ExtractingPage import ExtractingPage
 
 class MainPage:
-    def __init__(self, dotsConnected : List[XsDotDevice], dot_manager : DotManager, db_manager : DatabaseManager, root :ttkb.Window = None) -> None:
+    def __init__(self, dotsConnected : List[DotDevice], dot_manager : DotManager, db_manager : DatabaseManager, root :ttkb.Window = None) -> None:
         self.root = root
         self.dotsConnected = dotsConnected
         self.dot_manager = dot_manager
@@ -45,19 +44,15 @@ class MainPage:
         self.run_periodic_background_func()
     
     def make_export_button(self):
-        estimatedTime = 0
-        for device in self.dotsConnected:
-            deviceEstTime = self.dot_manager.usb.getExportEstimatedTime(str(device.deviceId()))
-            if estimatedTime < deviceEstTime:
-                estimatedTime = deviceEstTime
-        ttkb.Button(self.frame, text=f'Export data from all dots, estimated time : {estimatedTime} min', style="my.TButton", command=self.export_all_dots).grid(row=2, column=0, sticky="s")
+        self.estimatedTime = self.dot_manager.getExportEstimatedTime()
+        ttkb.Button(self.frame, text=f'Export data from all dots, estimated time : {round(self.estimatedTime,0)} min', style="my.TButton", command=self.export_all_dots).grid(row=2, column=0, sticky="s")
 
     def export_all_dots(self):
         for device in self.dotsConnected:
-            if device.recordingCount() > 0:
+            if device.btDevice.recordingCount() > 0:
                 extractEvent = threading.Event()
-                ExtractingPage(str(device.deviceId()), self.db_manager, extractEvent)
-                self.dot_manager.usb.export_data_thread(str(device.deviceId()), extractEvent)
+                if device.exportDataThread(extractEvent):
+                    ExtractingPage(device, self.estimatedTime, extractEvent)
 
     def run_periodic_background_func(self):
         self.dotPage.make_dot_connection_page(self.dotsConnected)

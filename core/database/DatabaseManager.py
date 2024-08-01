@@ -7,8 +7,6 @@ import firebase_admin.firestore
 from dataclasses import dataclass
 from datetime import datetime
 
-from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsDeviceId
-
 @dataclass
 class JumpData:
     jump_id : int
@@ -82,9 +80,9 @@ class DatabaseManager:
             data_jumps.append(JumpData(jump.id, jump.get("training_id"), jump.get("jump_type"), jump.get("jump_rotations"), jump.get("jump_success"), jump.get("jump_time")))
         return data_jumps
     
-    def get_skater_from_training(self, training_id : int) -> int:
+    def get_skater_from_training(self, training_id : int) -> str:
         skater_id = self.db.collection("trainings").document(training_id).get().get("skater_id")
-        return int(skater_id)
+        return skater_id
 
     def get_skater_name_from_id(self, skater_id : str) -> str:
         skater_name = self.db.collection("skaters").document(skater_id).get().get("skater_name")
@@ -102,10 +100,6 @@ class DatabaseManager:
     
     def delete_skater_data(self, skater_id : int) -> None:
         self.db.collection("skaters").document(skater_id).delete()
-
-    def find_training(self, date, device_id):
-        trainings = self.db.collection("trainings").where(filter=firestore.firestore.FieldFilter("training_date", "==", date)).where(filter=firestore.firestore.FieldFilter("dot_id", "==", device_id)).get()
-        return trainings
     
     def set_training_date(self, training_id, date) -> None:
         self.db.collection("trainings").document(training_id).update({"training_date" : date})
@@ -125,3 +119,6 @@ class DatabaseManager:
 
     def get_tag(self, deviceId):
         return self.db.collection("dots").document(deviceId).get().get("tag_name")
+    
+    def get_dot_from_bluetooth(self, bluetoothAddress):
+        return self.db.collection("dots").where(filter=firestore.firestore.FieldFilter("bluetooth_address", "==", bluetoothAddress)).get()[0]

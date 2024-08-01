@@ -29,46 +29,27 @@
 
 from typing import List
 import movelladot_pc_sdk
-from collections import defaultdict
-from threading import Lock
-import numpy as np
-from pynput import keyboard
 from user_settings import *
 import time
 
-from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsPortInfo, XsDotDevice, XsDotUsbDevice, XsString, XsDataPacket, XsDeviceId, XsDotConnectionManager
+from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsPortInfo, XsDotDevice, XsDotUsbDevice, XsDotConnectionManager
 
 waitForConnections = True
-
 
 def on_press(key):
     global waitForConnections
     waitForConnections = False
 
-
 class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
-    def __init__(self, max_buffer_size=5):
+    def __init__(self):
         movelladot_pc_sdk.XsDotCallback.__init__(self)
 
         self.__manager : XsDotConnectionManager = 0
-
-        self.__lock = Lock()
         self.__errorReceived = False
         self.__updateDone = False
-        self.__recordingStopped = False
-        self.__exportDone = False
-        self.__closing = False
-        self.__progressCurrent = 0
-        self.__progressTotal = 0
-        self.__packetsCount = 0
-        self.__packetsReceived = []
-
         self.__detectedDots = list()
         self.__connectedDots = list()
         self.__connectedUsbDots = list()
-        self.__maxNumberOfPacketsInBuffer = max_buffer_size
-        self.__packetBuffer = defaultdict(list)
-        self.__progress = dict()
 
     def initialize(self):
         """
@@ -81,11 +62,6 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         Returns:
             False if there was a problem creating a connection manager.
         """
-
-        # Print SDK version
-        version = movelladot_pc_sdk.XsVersion()
-        movelladot_pc_sdk.xsdotsdkDllVersion(version)
-
         # Create connection manager
         self.__manager = movelladot_pc_sdk.XsDotConnectionManager()
         if self.__manager is None:
@@ -100,7 +76,6 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         """
         Close connections to any Movella DOT devices and destructs the connection manager created in initialize
         """
-        self.__closing = True
         self.__manager.close()
 
     def scanForDots(self):
@@ -116,38 +91,12 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         print("Scanning for devices...")
         self.__manager.enableDeviceDetection()
 
-        # Setup the keyboard input listener
-        listener = keyboard.Listener(on_press=on_press)
-        listener.start()
-
         print("Press any key or wait 10 seconds to stop scanning...")
         connectedDOTCount = 0
         startTime = movelladot_pc_sdk.XsTimeStamp_nowMs()
         while waitForConnections and not self.errorReceived() and movelladot_pc_sdk.XsTimeStamp_nowMs() - startTime <= 10000:
             time.sleep(0.1)
 
-            nextCount = len(self.detectedDots())
-            if nextCount != connectedDOTCount:
-                print(f"Number of connected DOTs: {nextCount}. Press any key to start.")
-                connectedDOTCount = nextCount
-
-        self.__manager.disableDeviceDetection()
-        print("Stopped scanning for devices.")
-
-    def scanOneDots(self, bluetoothAddress):
-        print(bluetoothAddress)
-        print("Scanning for devices...")
-        self.__manager.enableDeviceDetection()
-
-        # Setup the keyboard input listener
-        listener = keyboard.Listener(on_press=on_press)
-        listener.start()
-
-        print("Press any key or wait 5 seconds to stop scanning...")
-        connectedDOTCount = 0
-        startTime = movelladot_pc_sdk.XsTimeStamp_nowMs()
-        while waitForConnections and not set(bluetoothAddress).issubset(np.vectorize(lambda x : x.bluetoothAddress(), otypes=[str])(self.detectedDots())):
-            time.sleep(0.1)
             nextCount = len(self.detectedDots())
             if nextCount != connectedDOTCount:
                 print(f"Number of connected DOTs: {nextCount}. Press any key to start.")
@@ -171,27 +120,25 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
             if portInfo.isBluetooth():
                 address = portInfo.bluetoothAddress()
 
-                print(f"Opening DOT with address: @ {address}")
-                if not self.__manager.openPort(portInfo):
-                    print(f"Connection to Device {address} failed, retrying...")
-                    print(f"Device {address} retry connected:")
+                checkDevice = False
+
+                while not checkDevice:
                     if not self.__manager.openPort(portInfo):
-                        print(f"Could not open DOT. Reason: {self.__manager.lastResultText()}")
-                        continue
+                        print(f"Connection to Device {address} failed")
+                        checkDevice = False
+                    else:
+                        device : XsDotDevice = self.__manager.device(portInfo.deviceId())
+                        if device is None:
+                            checkDevice = False
 
-                device : XsDotDevice = self.__manager.device(portInfo.deviceId())
-                if device is None:
-                    continue
+                        devicesId = []
+                        for x in self.__connectedDots:
+                            devicesId.append(x.deviceId())
 
-                devicesId = []
-                for x in self.__connectedDots:
-                    devicesId.append(x.deviceId())
+                        checkDevice = (device.deviceId() not in devicesId) and (device.deviceTagName() != '')
 
-                checkDevice = (device.deviceId() not in devicesId)
-                
-                if checkDevice:
-                    self.__connectedDots.append(device)
-                    print(f"Found a device with Tag: {device.deviceTagName()} @ address: {address}")
+                self.__connectedDots.append(device)
+                print(f"Found a device with Tag: {device.deviceTagName()} @ address: {address}")
             else:
                 print(f"Opening DOT with ID: {portInfo.deviceId().toXsString()} @ port: {portInfo.portName()}, baudrate: {portInfo.baudrate()}")
                 if not self.__manager.openPort(portInfo):
@@ -204,98 +151,12 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
 
                 self.__connectedUsbDots.append(device)
                 print(f"Device: {device.productCode()}, with ID: {device.deviceId().toXsString()} opened.")
-    
-    def connectOneDot(self, bluetoothAddress):
-        for portInfo in self.detectedDots():
-            if portInfo.isBluetooth() and portInfo.bluetoothAddress() in bluetoothAddress:
-                address = portInfo.bluetoothAddress()
-
-                print(f"Opening DOT with address: @ {address}")
-                if not self.__manager.openPort(portInfo):
-                    print(f"Connection to Device {address} failed, retrying...")
-                    print(f"Device {address} retry connected:")
-                    if not self.__manager.openPort(portInfo):
-                        print(f"Could not open DOT. Reason: {self.__manager.lastResultText()}")
-                        continue
-
-                device = self.__manager.device(portInfo.deviceId())
-                if device is None:
-                    continue
-                
-                devicesId = [] 
-                for x in self.__connectedDots:
-                    devicesId.append(x.deviceId())
-                if not device.deviceId() in devicesId:
-                    self.__connectedDots.append(device)
-                    print(f"Found a device with Tag: {device.deviceTagName()} @ address: {address}")
-
-    def resetWaitingConnection(self):
-        global waitForConnections
-        waitForConnections = True
-
-    def resetConnectedDots(self):
-        self.__connectedUsbDots = []
-        self.__connectedDots = []
-        self.__detectedDots = []
-
-    def setConnectedUsbDots(self, usbDevices : List[XsDotUsbDevice]):
-        self.__connectedUsbDots = usbDevices
-
-    def setConnectedDots(self, devices : List[XsDotDevice]):
-        self.__connectedDots = devices
-
-    def connectOneUsbDot(self,portInfo):
-        self.__manager.openPort(portInfo)
-        device = self.__manager.usbDevice(portInfo.deviceId())
-        if device is not None:
-            self.__connectedUsbDots.append(device)
-
-    def reconnectUsbDot(self, portInfoArray : List[XsPortInfo]):
-        for portInfo in portInfoArray:
-            self.connectOneUsbDot(portInfo)
-
-    def reconnectBtDot(self, bluetoothAdress : List[str]):
-        for btPort in bluetoothAdress:
-            portInfo = XsPortInfo(XsString(f"BT:{btPort}"), 0)
-
-            if not self.__manager.openPort(portInfo):
-                print(f"Connection to Device {btPort} failed, retrying...")
-                print(f"Device {btPort} retry connected:")
-                if not self.__manager.openPort(portInfo):
-                    print(f"Could not open DOT. Reason: {self.__manager.lastResultText()}")
-
-            device = self.__manager.device(portInfo.deviceId())
-            
-            devicesId = [] 
-            for x in self.__connectedDots:
-                devicesId.append(x.deviceId())
-            if not device.deviceId() in devicesId:
-                self.__connectedDots.append(device)
-                print(f"Found a device with Tag: {device.deviceTagName()} @ address: {btPort}")
-
-    def disconnecteUsbDot(self, device : XsDotUsbDevice):
-        if device in self.__connectedUsbDots:
-            self.__connectedUsbDots.remove(device)
-            self.__manager.closePort(device.portInfo())
-
-    def disconnecteUsbDotFromId(self, deviceId : XsDeviceId):
-        device = self.__manager.device(deviceId)
-        if device in self.__connectedUsbDots:
-            self.__connectedUsbDots.remove(device)
-            self.__manager.closePort(device.portInfo())
 
     def detectUsbDevices(self):
         """
         Scans for USB connected Movella DOT devices for data export
         """
         self.__detectedDots = self.__manager.detectUsbDevices()
-
-    def manager(self):
-        """
-        Returns:
-             A pointer to the XsDotConnectionManager
-        """
-        return self.__manager
 
     def detectedDots(self) -> List[XsPortInfo]:
         """
@@ -325,12 +186,6 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         """
         return self.__errorReceived
 
-    def exportDone(self):
-        """
-        True if the export has finished
-        """
-        return self.__exportDone
-
     def updateDone(self):
         """
         Returns:
@@ -344,94 +199,6 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         """
         self.__updateDone = False
 
-    def recordingStopped(self):
-        """
-        Returns:
-             True if the device indicated the recording has stopped
-        """
-        return self.__recordingStopped
-
-    def resetRecordingStopped(self):
-        """
-        Resets the recording stopped member variable to be ready for a next recording
-        """
-        self.__recordingStopped = False
-
-    def packetsAvailable(self):
-        """
-        Returns:
-             True if a data packet is available for each of the connected Movella DOT devices
-        """
-        for dev in self.__connectedDots:
-            if self.packetAvailable(dev.bluetoothAddress()) == 0:
-                return False
-        return True
-
-    def packetAvailable(self, bluetoothAddress):
-        """
-        Parameters:
-            bluetoothAddress: The bluetooth address of the Movella DOT to check for a ready data packet
-        Returns:
-            True if a data packet is available for the Movella DOT with the provided bluetoothAddress
-        """
-        self.__lock.acquire()
-        res = len(self.__packetBuffer[bluetoothAddress]) > 0
-        self.__lock.release()
-        return res
-
-    def packetsReceived(self):
-        """
-        Returns:
-             The number of packets received during data export
-        """
-        return self.__packetsReceived
-
-    def getNextPacket(self, bluetoothAddress):
-        """
-        Parameters:
-            bluetoothAddress: The bluetooth address of the Movella DOT to get the next packet for
-        Returns:
-             The next available data packet for the Movella DOT with the provided bluetoothAddress
-        """
-        if len(self.__packetBuffer[bluetoothAddress]) == 0:
-            return None
-        self.__lock.acquire()
-        oldest_packet = movelladot_pc_sdk.XsDataPacket(self.__packetBuffer[bluetoothAddress].pop(0))
-        self.__lock.release()
-        return oldest_packet
-
-    def addDeviceToProgressBuffer(self, bluetoothAddress):
-        """
-        Initialize internal progress buffer for an Movella DOT device
-
-        Parameters:
-            bluetoothAddress: The bluetooth address of the Movella DOT
-        """
-        self.__progress[bluetoothAddress] = 0
-
-    def progress(self):
-        """
-        Returns:
-             The current progress indication of the connected Movella DOT devices
-        """
-        return self.__progress
-
-    def _outputDeviceProgress(self):
-        """
-        Helper function for printing file export info to the command line.
-        """
-        line = '\rExporting... '
-        if self.__exportDone:
-            line += 'done!'
-        elif self.__progressTotal != 0xffff:
-            line += '{:.1f}%'.format(100.0 * self.__progressCurrent / self.__progressTotal)
-        else:
-            line += f'{self.__progressCurrent}'
-        if self.__exportDone:
-            print(line)
-        else:
-            print(line, end='', flush=True)
-
     def onAdvertisementFound(self, port_info):
         """
         Called when an Movella DOT device advertisement was received. Updates m_detectedDots.
@@ -442,16 +209,6 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
             self.__detectedDots.append(port_info)
         else:
             print(f"Ignoring {port_info.bluetoothAddress()}")
-
-    def onBatteryUpdated(self, device, batteryLevel, chargingStatus):
-        """
-        Called when a battery status update is available. Prints to screen.
-        Parameters:
-            device: The device that initiated the callback. This may be 0 in some cases
-            batteryLevel: The battery level in percentage
-            chargingStatus: The charging status of the battery. 0: Not charging, 1: charging
-        """
-        print(device.deviceTagName() + f" BatteryLevel: {batteryLevel} Charging status: {chargingStatus}")
 
     def onError(self, result, errorString):
         """
@@ -464,48 +221,6 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         print(f"Error received: {errorString}")
         self.__errorReceived = True
 
-    def onLiveDataAvailable(self, device, packet):
-        """
-        Called when new data has been received from a device
-        Adds the new packet to the device's packet buffer
-        Monitors buffer size, removes oldest packets if the size gets too big
-
-        Parameters:
-            device: The device that initiated the callback.
-            packet: The data packet that has been received (and processed).
-        """
-        self.__lock.acquire()
-        while len(self.__packetBuffer[device.portInfo().bluetoothAddress()]) >= self.__maxNumberOfPacketsInBuffer:
-            self.__packetBuffer[device.portInfo().bluetoothAddress()].pop()
-        self.__packetBuffer[device.portInfo().bluetoothAddress()].append(movelladot_pc_sdk.XsDataPacket(packet))
-        self.__lock.release()
-
-    def onProgressUpdated(self, device, current, total, identifier):
-        """
-        Called when a long-duration operation has made some progress or has completed.
-        When device is an XsDotUsbDevice, the progress applies to data export progress
-        When device is an XsDotDevice, the progress applies to OTA and Magnetic Field Mapping progress
-        Parameters:
-            device: The device that initiated the callback.
-            current: The current progress.
-            total: The total work to be done. When current equals total, the task is completed.
-            identifier: An identifier for the task. This may for example be a filename for file read operations.
-        """
-        if isinstance(device, movelladot_pc_sdk.XsDotUsbDevice):
-            self.__progressCurrent = current
-            self.__progressTotal = total
-            self._outputDeviceProgress()
-        else:
-            address = device.bluetoothAddress()
-            if address not in self.__progress:
-                self.__progress[address] = current
-            if current > self.__progress[address]:
-                self.__progress[address] = current
-                if identifier:
-                    print(f"\rUpdate: {current} Total: {total} Remark: {identifier}", end="", flush=True)
-                else:
-                    print(f"\rUpdate: {current} Total: {total}", end="", flush=True)
-
     def onDeviceUpdateDone(self, portInfo, result):
         """
         Called when the firmware update process has completed. Prints to screen.
@@ -515,64 +230,3 @@ class XdpcHandler(movelladot_pc_sdk.XsDotCallback):
         """
         print(f"\n{portInfo.bluetoothAddress()}  Firmware Update done. Result: {movelladot_pc_sdk.XsDotFirmwareUpdateResultToString(result)}")
         self.__updateDone = True
-
-    def onRecordingStopped(self, device : XsDotDevice):
-        """
-        Called when a recording has stopped. Prints to screen.
-        Parameters:
-            device: The device that initiated the callback.
-        """
-        print(f"\n{device.deviceTagName()} Recording stopped")
-        self.__recordingStopped = True
-
-    def onDeviceStateChanged(self, device, newState, oldState):
-        """
-        Called when the device state has changed.
-        Used for removing/disconnecting the device when it indicates a power down.
-        Parameters:
-            device: The device that initiated the callback.
-            newState: The new device state.
-            oldState: The old device state.
-        """
-        if newState == movelladot_pc_sdk.XDS_Destructing and not self.__closing:
-            print(f"\n{device.deviceTagName()} Device powered down")
-            for dev in self.__connectedDots:
-                if dev.bluetoothAddress() == device.bluetoothAddress():
-                    self.__connectedDots.remove(dev)
-
-    def onButtonClicked(self, device, timestamp):
-        """
-        Called when the device's button has been clicked. Prints to screen.
-        Parameters:
-            device: The device that initiated the callback.
-            timestamp: The timestamp at which the button was clicked
-        """
-        print(f"\n{device.deviceTagName()} Button clicked at {timestamp}")
-
-    def onRecordedDataAvailable(self, device, packet : XsDataPacket):
-        """
-        Called when new data has been received from a device that is exporting a recording
-
-        The callback rate will be as fast as the data comes in and not necessarily reflect real-time. For
-        timing information, please refer to the SampletimeFine which is available when the Timestamp field is exported.
-        Parameters:
-            device: The device that initiated the callback.
-            packet: The data packet that has been received.
-        """ 
-        self.__packetsCount += 1
-        euler = packet.orientationEuler()
-        captor = packet.calibratedData()
-        data = np.concatenate([[int(self.__packetsCount), packet.sampleTimeFine(), euler.x(), euler.y(), euler.z()], captor.m_acc, captor.m_gyr])
-        self.__packetsReceived.append(data)
-
-    def onRecordedDataDone(self, device):
-        """
-        Called when a device that is exporting a recording is finished with exporting.
-
-        This callback will occur in any sitation that stops the export of the recording, such as
-        the export being completed, the export being stopped by request or an internal failure.
-        Parameters:
-            device: The device that initiated the callback.
-        """
-        self.__exportDone = True
-        self._outputDeviceProgress()
