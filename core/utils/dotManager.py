@@ -53,7 +53,12 @@ class DotManager:
 
             for portInfoBt in self.portInfoBt:
                 device = self.db_manager.get_dot_from_bluetooth(portInfoBt.bluetoothAddress())
-                portInfoUsb = self.portInfoUsb.get(device.id, None)
+                if device is None :
+                    print("Adding a new device")
+                    deviceId = self.connectNewDevice(portInfoBt)
+                else:
+                    deviceId = device.id
+                portInfoUsb = self.portInfoUsb.get(deviceId, None)
                 if portInfoUsb is not None:
                     self.devices.append(DotDevice(portInfoUsb, portInfoBt, self.db_manager))
                 else:
@@ -93,3 +98,22 @@ class DotManager:
 
     def getDevices(self):
         return self.devices
+    
+    def connectNewDevice(self, portInfoBt : XsPortInfo):
+        manager = XsDotConnectionManager()
+        checkDevice = False
+        while not checkDevice:
+            manager.closePort(portInfoBt)
+            if not manager.openPort(portInfoBt):
+                print(f"Connection to Device {portInfoBt.bluetoothAddress()} failed")
+                checkDevice = False
+            else:
+                device : XsDotDevice = manager.device(portInfoBt.deviceId())
+                if device is None:
+                    checkDevice = False
+                else:
+                    time.sleep(1)
+                    checkDevice = (device.deviceTagName() != '') and (device.batteryLevel() != 0)
+        self.db_manager.save_dot_data(str(device.deviceId()), device.bluetoothAddress(), device.deviceTagName())
+        manager.closePort(portInfoBt)
+        return str(device.deviceId())

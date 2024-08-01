@@ -25,9 +25,10 @@ class MainPage:
         self.buttonFrame.grid_columnconfigure(0,weight=1)
         buttonStyle = ttkb.Style()
         buttonStyle.configure('my.TButton', font=Font(self.frame, size=20, weight=BOLD))
+        labelFont = Font(self.root, size=15, weight=BOLD)
         ttkb.Button(self.buttonFrame, text='Scan for dots', style="my.TButton", command=self.no).grid(row=0, column=0)
         self.buttonFrame.grid(row=0,column=0)
-        self.waiting_label = ttkb.Label(self.frame, text="Waiting for connection", font=Font(self.root, size=15, weight=BOLD))
+        self.waiting_label = ttkb.Label(self.frame, text="Waiting for connection", font=labelFont)
         self.waiting_label.grid(row=1,column=0)
         self.frame.grid()
         

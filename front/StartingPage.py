@@ -13,7 +13,7 @@ class StartingPage:
         self.deviceTag = self.device.deviceTagName()
         self.event = event
         self.skaters = db_manager.get_all_skaters()
-        self.window = ttkb.Toplevel(title="Confirmation", size=(1000,400))
+        self.window = ttkb.Toplevel(title="Confirmation", size=(1200,400))
         self.window.grid_rowconfigure(0, weight = 1)
         self.window.grid_columnconfigure(0, weight = 1)
         self.frame = ttkb.Frame(self.window)
@@ -49,5 +49,6 @@ class StartingPage:
         label.grid()
         self.frame.grid()
         self.window.update()
+        self.db_manager.set_current_record(deviceId, 0)
         time.sleep(1)
         self.window.destroy()

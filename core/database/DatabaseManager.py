@@ -105,7 +105,6 @@ class DatabaseManager:
         self.db.collection("trainings").document(training_id).update({"training_date" : date})
 
     def set_current_record(self, device_id, current_record) -> None:
-        print(current_record)
         self.db.collection("dots").document(device_id).update({"current_record" : current_record})
 
     def get_current_record(self, device_id) -> str:
@@ -121,4 +120,14 @@ class DatabaseManager:
         return self.db.collection("dots").document(deviceId).get().get("tag_name")
     
     def get_dot_from_bluetooth(self, bluetoothAddress):
-        return self.db.collection("dots").where(filter=firestore.firestore.FieldFilter("bluetooth_address", "==", bluetoothAddress)).get()[0]
+        dots =  self.db.collection("dots").where(filter=firestore.firestore.FieldFilter("bluetooth_address", "==", bluetoothAddress)).get()
+        if len(dots) > 0:
+            return dots[0]
+        else:
+            return None
+        
+    def save_dot_data(self, deviceId : str, bluetoothAddress : str, tagName : str) -> None:
+        newDot = {"bluetooth_address" : bluetoothAddress,
+                  "current_record" : "0",
+                  "tag_name" : tagName}
+        self.db.collection("dots").add(document_data=newDot, document_id=deviceId)
