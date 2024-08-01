@@ -3,7 +3,7 @@ import ttkbootstrap as ttkb
 from tkinter.font import BOLD, Font
 from typing import List
 
-from DotDevice import DotDevice
+from core.utils.DotDevice import DotDevice
 
 class DotPage(ttkb.Frame):
     def __init__(self, parent, **kwargs) -> None:

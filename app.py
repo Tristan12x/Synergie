@@ -5,7 +5,7 @@ import threading
 
 from core.data_treatment.data_generation.exporter import export
 from core.database.DatabaseManager import *
-from core.utils.dotManager import DotManager
+from core.utils.DotManager import DotManager
 from front.StartingPage import StartingPage
 from front.StopingPage import StopingPage
 from front.MainPage import MainPage
@@ -55,7 +55,7 @@ myapp = App(root)
 width= root.winfo_screenwidth()               
 height= root.winfo_screenheight()               
 root.geometry("%dx%d" % (width, height))
-ico = Image.open('Logo_synergie.png')
+ico = Image.open('img/Logo_synergie.png')
 photo = ImageTk.PhotoImage(ico)
 root.wm_iconphoto(False, photo)
 root.mainloop()

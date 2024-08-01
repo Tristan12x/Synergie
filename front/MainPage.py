@@ -3,9 +3,9 @@ from tkinter.font import BOLD, Font
 from typing import List
 import ttkbootstrap as ttkb
 
-from DotDevice import DotDevice
+from core.utils.DotDevice import DotDevice
 from core.database.DatabaseManager import DatabaseManager
-from core.utils.dotManager import DotManager
+from core.utils.DotManager import DotManager
 from front.DotPage import DotPage
 
 from front.ExtractingPage import ExtractingPage

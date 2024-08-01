@@ -3,7 +3,7 @@ import time
 from tkinter.font import BOLD, Font
 import ttkbootstrap as ttkb
 
-from DotDevice import DotDevice
+from core.utils.DotDevice import DotDevice
 from core.database.DatabaseManager import DatabaseManager, TrainingData
 
 class StartingPage:

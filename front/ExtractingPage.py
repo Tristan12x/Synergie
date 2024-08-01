@@ -4,7 +4,7 @@ from tkinter.font import BOLD, Font
 import ttkbootstrap as ttkb
 import tkinter as tk
 
-from DotDevice import DotDevice
+from core.utils.DotDevice import DotDevice
 
 class ExtractingPage:
     def __init__(self, device : DotDevice, estimatedTime, event : threading.Event) -> None:

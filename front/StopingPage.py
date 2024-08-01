@@ -3,7 +3,7 @@ import time
 from tkinter.font import BOLD, Font
 import ttkbootstrap as ttkb
 
-from DotDevice import DotDevice
+from core.utils.DotDevice import DotDevice
 from front.ExtractingPage import ExtractingPage
 
 class StopingPage:

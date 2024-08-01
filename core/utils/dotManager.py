@@ -1,9 +1,9 @@
 import os
 
 import numpy as np
-from DotDevice import DotDevice
+from core.utils.DotDevice import DotDevice
 from core.database.DatabaseManager import DatabaseManager
-from xdpchandler import *
+from core.utils.xdpchandler import *
 import asyncio
 if os.name == 'nt':
     from winrt.windows.devices import radios
