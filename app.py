@@ -40,7 +40,7 @@ class App:
                 print("Connection")
                 for device in lastConnected:
                     event = threading.Event()
-                    StopingPage(device, event)
+                    StopingPage(device, self.db_manager, event)
                     event.wait()
             if lastDisconnected:
                 print("Deconnection")

@@ -47,12 +47,15 @@ class MainPage:
     def make_export_button(self):
         self.estimatedTime = self.dot_manager.getExportEstimatedTime()
         ttkb.Button(self.frame, text=f'Export data from all dots, estimated time : {round(self.estimatedTime,0)} min', style="my.TButton", command=self.export_all_dots).grid(row=2, column=0, sticky="s")
+        self.saveFile = ttkb.Checkbutton(self.frame, text="Save extract in a file (for research)")
+        self.saveFile.state(['!alternate'])
+        self.saveFile.grid(row=3,column=0,sticky="s")
 
     def export_all_dots(self):
         for device in self.dotsConnected:
             if device.btDevice.recordingCount() > 0:
                 extractEvent = threading.Event()
-                if device.exportDataThread(extractEvent):
+                if device.exportDataThread(self.saveFile.instate(["selected"]),extractEvent):
                     ExtractingPage(device, self.estimatedTime, extractEvent)
 
     def run_periodic_background_func(self):

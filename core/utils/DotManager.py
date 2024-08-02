@@ -91,7 +91,7 @@ class DotManager:
         return(lastConnected,lastDisconnected)
 
     def getExportEstimatedTime(self):
-        estimatedTime = []
+        estimatedTime = [0]
         for device in self.devices:
             estimatedTime.append(device.getExportEstimatedTime())
         return np.max(estimatedTime)

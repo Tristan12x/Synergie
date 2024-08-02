@@ -49,6 +49,5 @@ class StartingPage:
         label.grid()
         self.frame.grid()
         self.window.update()
-        self.db_manager.set_current_record(deviceId, 0)
         time.sleep(1)
         self.window.destroy()

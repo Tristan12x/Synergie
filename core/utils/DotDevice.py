@@ -1,3 +1,5 @@
+from datetime import datetime
+import os
 from threading import Event, Thread
 import time
 from movelladot_pc_sdk.movelladot_pc_sdk_py39_64 import XsDotDevice, XsDotUsbDevice, XsDotConnectionManager, XsDotCallback, XsPortInfo, XsDataPacket
@@ -103,16 +105,16 @@ class DotDevice(XsDotCallback):
             return self.btDevice.stopRecording()
         return True
     
-    def exportDataThread(self, extractEvent : Event) -> bool:
+    def exportDataThread(self, saveFile : bool, extractEvent : Event) -> bool:
         self.exporting = True
         self.currentImage = self.imageInactive
         self.initializeUsb()
-        export_thread = Thread(target=self.exportData, args=([extractEvent]))
+        export_thread = Thread(target=self.exportData, args=([saveFile, extractEvent]))
         export_thread.daemon = True
         export_thread.start()
         return True
 
-    def exportData(self, extractEvent : Event):
+    def exportData(self, saveFile : bool, extractEvent : Event):
         self.exportDone = False
         self.packetsReceived = []
         self.count = 0
@@ -121,6 +123,10 @@ class DotDevice(XsDotCallback):
         exportData.push_back(movelladot_pc_sdk.RecordingData_Euler)
         exportData.push_back(movelladot_pc_sdk.RecordingData_Acceleration)
         exportData.push_back(movelladot_pc_sdk.RecordingData_AngularVelocity)
+        if saveFile:
+            exportData.push_back(movelladot_pc_sdk.RecordingData_MagneticField)
+            exportData.push_back(movelladot_pc_sdk.RecordingData_Quaternion)
+            exportData.push_back(movelladot_pc_sdk.RecordingData_Status)
 
         for recordingIndex in range(1, self.usbDevice.recordingCount()+1):
             recInfo = self.usbDevice.getRecordingInfo(recordingIndex)
@@ -129,19 +135,24 @@ class DotDevice(XsDotCallback):
 
             dateRecord = recInfo.startUTC()
             trainingId = self.db_manager.get_current_record(self.deviceId())
-            self.db_manager.set_training_date(trainingId, dateRecord)
-            skaterId = self.db_manager.get_skater_from_training(trainingId)
-            if not self.usbDevice.selectExportData(exportData):
-                print(f'Could not select export data. Reason: {self.usbDevice.lastResultText()}')
-            elif not self.usbDevice.startExportRecording(recordingIndex):
-                print(f'Could not export recording. Reason: {self.usbDevice.lastResultText()}')
-            else:
-                while not self.exportDone:
-                    time.sleep(0.1)
-                print('File export finished!')
-                df = pd.DataFrame.from_records(self.packetsReceived, columns=["PacketCounter","SampleTimeFine","Euler_X","Euler_Y","Euler_Z","Acc_X","Acc_Y","Acc_Z","Gyr_X","Gyr_Y","Gyr_Z"])
+            if trainingId != "":
+                self.db_manager.set_training_date(trainingId, dateRecord)
+                skaterId = self.db_manager.get_skater_from_training(trainingId)
+                if not self.usbDevice.selectExportData(exportData):
+                    print(f'Could not select export data. Reason: {self.usbDevice.lastResultText()}')
+                elif not self.usbDevice.startExportRecording(recordingIndex):
+                    print(f'Could not export recording. Reason: {self.usbDevice.lastResultText()}')
+                else:
+                    while not self.exportDone:
+                        time.sleep(0.1)
+                    print('File export finished!')
+                    df = pd.DataFrame.from_records(self.packetsReceived, columns=["PacketCounter","SampleTimeFine","Euler_X","Euler_Y","Euler_Z","Acc_X","Acc_Y","Acc_Z","Gyr_X","Gyr_Y","Gyr_Z"])
+                    if saveFile:
+                        date = datetime.fromtimestamp(dateRecord).strftime("%Y_%m_%d")
+                        os.makedirs(f"data/raw/{date}", exist_ok = True)
+                        df.to_csv(f"data/raw/{date}/{trainingId}.csv", index=False)
 
-            self.predict_training(trainingId, skaterId, df)
+                self.predict_training(trainingId, skaterId, df)
         
         self.usbDevice.eraseFlash()
         print("You can disconnect the dot")

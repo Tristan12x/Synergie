@@ -105,10 +105,15 @@ class DatabaseManager:
         self.db.collection("trainings").document(training_id).update({"training_date" : date})
 
     def set_current_record(self, device_id, current_record) -> None:
-        self.db.collection("dots").document(device_id).update({"current_record" : current_record})
+        self.db.collection("dots").document(device_id).update({"current_record" : firestore.ArrayUnion([current_record])})
 
     def get_current_record(self, device_id) -> str:
-        return self.db.collection("dots").document(device_id).get().get("current_record")
+        try:
+            trainingId = self.db.collection("dots").document(device_id).get().get("current_record")[-1]
+            self.db.collection("dots").document(device_id).update({"current_record" : firestore.ArrayRemove([trainingId])})
+            return trainingId
+        except:
+            return ""
 
     def get_bluetooth_address(self, device_list : List[str]) -> List[str]:
         bluetooth_list = []
@@ -128,6 +133,6 @@ class DatabaseManager:
         
     def save_dot_data(self, deviceId : str, bluetoothAddress : str, tagName : str) -> None:
         newDot = {"bluetooth_address" : bluetoothAddress,
-                  "current_record" : "0",
+                  "current_record" : [],
                   "tag_name" : tagName}
         self.db.collection("dots").add(document_data=newDot, document_id=deviceId)

@@ -3,12 +3,14 @@ import time
 from tkinter.font import BOLD, Font
 import ttkbootstrap as ttkb
 
+from core.database.DatabaseManager import DatabaseManager
 from core.utils.DotDevice import DotDevice
 from front.ExtractingPage import ExtractingPage
 
 class StopingPage:
-    def __init__(self, device : DotDevice, event : threading.Event) -> None:
+    def __init__(self, device : DotDevice, db_manager : DatabaseManager, event : threading.Event) -> None:
         self.device = device
+        self.db_manager = db_manager
         self.deviceTag = self.device.deviceTagName()
         self.event = event
         self.window = ttkb.Toplevel(title="Confirmation", size=(1000,400))
@@ -26,6 +28,9 @@ class StopingPage:
         ttkb.Button(self.frame, text="Stop", style="my.TButton", command=self.stopRecord).grid(row=1,column=0,sticky="nsew",pady=20)
         self.estimatedTime = self.device.getExportEstimatedTime()
         ttkb.Button(self.frame, text=f"Stop and extract data \n Estimated time : {round(self.estimatedTime,0)} min", style="my.TButton", command=self.stopRecordAndExtract).grid(row=2,column=0,sticky="nsew")
+        self.saveFile = ttkb.Checkbutton(self.frame, text="Save extract in a file (for research)")
+        self.saveFile.state(['!alternate'])
+        self.saveFile.grid(row=3,column=0,sticky="nsew")
         self.frame.grid(sticky ="nswe")
         self.window.grid()
 
@@ -48,6 +53,7 @@ class StopingPage:
     def stopRecordAndExtract(self):
         recordStopped = self.device.stopRecord()
         self.event.set()
+        saveFile = self.saveFile.instate(["selected"])
         self.frame.destroy()
         self.frame = ttkb.Frame(self.window)
         if recordStopped :
@@ -61,6 +67,6 @@ class StopingPage:
         time.sleep(1)
         if recordStopped :
             extractEvent = threading.Event()
-            if self.device.exportDataThread(extractEvent):
+            if self.device.exportDataThread(saveFile, extractEvent):
                 ExtractingPage(self.device, self.estimatedTime, extractEvent)
         self.window.destroy()
