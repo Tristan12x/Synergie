@@ -12,26 +12,33 @@ from front.MainPage import MainPage
 
 class App:
 
-    def __init__(self, root):
+    def __init__(self, root : ttkb.Window):
         self.db_manager = DatabaseManager()
         self.dot_manager = DotManager(self.db_manager)
         self.root = root
 
         self.mainPage = MainPage([], self.dot_manager, self.db_manager, self.root)
+        self.initialEvent = threading.Event()
+        threading.Thread(target=self.initialize, args=([self.initialEvent]), daemon=True).start()
+        self.checkInit()
+    
+    def checkInit(self):
+        if self.initialEvent.is_set():
+            self.mainPage.dotsConnected = self.dot_manager.getDevices()
+            self.mainPage.make_dot_page()
+            self.initialEvent.clear()
+        else:
+            self.root.after(100, self.checkInit)
 
-        threading.Thread(target=self.initialize, daemon=True).start()
-
-    def initialize(self):
+    def initialize(self, initialEvent : threading.Event):
         self.dot_manager.firstConnection()
+        initialEvent.set()
 
-        self.mainPage.dotsConnected = self.dot_manager.getDevices()
-        self.mainPage.make_dot_page()
-
-        usb_detection_thread = threading.Thread(target=self.checkUsbDots, args=())
+        usb_detection_thread = threading.Thread(target=self.checkUsbDots, args=([self.startStopping, self.startStarting]))
         usb_detection_thread.daemon = True
         usb_detection_thread.start()
 
-    def checkUsbDots(self):
+    def checkUsbDots(self, callbackStop, callbackStart):
         while True:
             checkUsb = self.dot_manager.checkDevices()
             lastConnected = checkUsb[0]
@@ -39,21 +46,25 @@ class App:
             if lastConnected:
                 print("Connection")
                 for device in lastConnected:
-                    event = threading.Event()
-                    StopingPage(device, self.db_manager, event)
-                    event.wait()
+                    if device.isRecording or device.recordingCount > 0 :
+                        callbackStop(device)
             if lastDisconnected:
                 print("Deconnection")
                 for device in lastDisconnected:
-                    event = threading.Event()
-                    StartingPage(device, self.db_manager, event)
-                    event.wait()
+                    if not device.isRecording:
+                        callbackStart(device)
             time.sleep(0.2)
+
+    def startStopping(self, device):
+        StopingPage(device, self.db_manager)
+    
+    def startStarting(self, device):
+        StartingPage(device, self.db_manager)
 
 root = ttkb.Window(title="Synergie", themename="minty")
 myapp = App(root)
-width= root.winfo_screenwidth()               
-height= root.winfo_screenheight()               
+width = root.winfo_screenwidth()
+height = root.winfo_screenheight()
 root.geometry("%dx%d" % (width, height))
 ico = Image.open('img/Logo_s2mJUMP_RGB.png')
 photo = ImageTk.PhotoImage(ico)

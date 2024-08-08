@@ -69,7 +69,7 @@ class DotManager:
         self.previousConnected = self.devices
     
     def checkDevices(self) -> tuple[List[DotDevice], List[DotDevice]]:
-        connected = []
+        connected : List[DotDevice] = []
         for device in self.devices:
             if device.btDevice.isCharging():
                 connected.append(device)
@@ -79,10 +79,12 @@ class DotManager:
         if len(self.previousConnected) > len(connected):
             for device in self.previousConnected:
                 if device not in connected:
+                    device.closeUsb()
                     lastDisconnected.append(device)
         elif len(self.previousConnected) < len(connected):
             for device in connected:
                 if device not in self.previousConnected:
+                    device.openUsb()
                     lastConnected.append(device)
         else:
             pass

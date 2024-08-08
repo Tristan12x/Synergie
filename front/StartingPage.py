@@ -1,53 +1,95 @@
-import threading
 import time
+from tkinter import VERTICAL
 from tkinter.font import BOLD, Font
+from math import ceil
 import ttkbootstrap as ttkb
+import tkinter.messagebox as messagebox
 
 from core.utils.DotDevice import DotDevice
 from core.database.DatabaseManager import DatabaseManager, TrainingData
 
 class StartingPage:
-    def __init__(self, device : DotDevice, db_manager : DatabaseManager, event : threading.Event) -> None:
+    def __init__(self, device : DotDevice, db_manager : DatabaseManager) -> None:
         self.device = device
         self.db_manager = db_manager
-        self.deviceTag = self.device.deviceTagName()
-        self.event = event
+        self.deviceTag = self.device.deviceTagName
         self.skaters = db_manager.get_all_skaters()
-        self.window = ttkb.Toplevel(title="Confirmation", size=(1200,400))
-        self.window.grid_rowconfigure(0, weight = 1)
-        self.window.grid_columnconfigure(0, weight = 1)
-        self.frame = ttkb.Frame(self.window)
-        self.frame.grid_rowconfigure(0, weight = 0)
+
+        self.window = ttkb.Toplevel(title="Confirmation", size=(1400,400))
+        self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.window.grid_rowconfigure(0, weight=0)
+        self.window.grid_rowconfigure(1, weight=1)
+        self.window.grid_columnconfigure(0, weight=1, pad=20)
+        self.window.grid_columnconfigure(1, weight=0)
+
+        self.label = ttkb.Label(self.window, text=f"Starting a training on sensor {self.deviceTag}", font=Font(self.window, size=20, weight=BOLD))
+        self.label.grid(row=0,column=0,columnspan=2, pady=20)
+
+        self.canvas = ttkb.Canvas(self.window)
+        self.canvas.grid_rowconfigure(0, weight = 1)
+        self.canvas.grid_columnconfigure(0, weight = 1)
+
+        self.frame = ttkb.Frame(self.canvas)
+        self.frame.grid_rowconfigure(0, weight = 1)
         self.frame.grid_rowconfigure(1, weight = 1)
-        self.frame.grid_rowconfigure(2, weight = 1)
-        label = ttkb.Label(self.frame, text=f"Starting a training on sensor {self.deviceTag}", font=Font(self.window, size=20, weight=BOLD))
-        label.grid(row=0,column=0,columnspan=len(self.skaters),pady=20)
-        skater_per_column = len(self.skaters)//2 + len(self.skaters)%2
-        for i in range(skater_per_column):
-            self.frame.grid_columnconfigure(i, weight = 1)
+        self.frame.grid_columnconfigure(0, weight = 1)
+        self.frame.grid_columnconfigure(1, weight = 1)
+        self.frame.grid_columnconfigure(2, weight = 1)
+        self.frame.grid_columnconfigure(3, weight = 1)
+        self.frame.grid_columnconfigure(4, weight = 1)
+
         buttonStyle = ttkb.Style()
-        buttonStyle.configure('my.TButton', font=Font(self.frame, size=15, weight=BOLD))
+        buttonStyle.configure('my.TButton', font=Font(self.frame, size=12, weight=BOLD))
         for i,skater in enumerate(self.skaters):
-            button = ttkb.Button(self.frame, text=skater.skater_name, style="my.TButton", command=lambda : self.startRecord(skater.skater_id))
-            button.grid(row=i//skater_per_column+1,column=i%skater_per_column,sticky="nsew",padx=10,pady=10)
-        self.frame.grid(sticky="nswe")
+            button = ttkb.Button(self.frame, text=f"\n{skater.skater_name}\n", style="my.TButton", width=ceil((250-24)/11), command=(lambda x=skater.skater_id,y=skater.skater_name: self.startRecord(x,y)))
+            button.grid(row=i//5+1,column=i%5,padx=10,pady=10)
+        
+        self.frame.bind('<Enter>', self._bound_to_mousewheel)
+        self.frame.bind('<Leave>', self._unbound_to_mousewheel)
+
+        self.frame.grid(row=0, column=0, sticky="nswe")
+        
+        scroll = ttkb.Scrollbar(self.window, orient=VERTICAL, command=self.canvas.yview)
+        scroll.grid(row=1,column=1, sticky="ns")
+
+        self.canvas.configure(yscrollcommand=scroll.set)
+        self.canvas.bind(
+            '<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        self.canvas.create_window((0, 0), window=self.frame, anchor="center")
+
+        self.canvas.grid(row=1,column=0, sticky="nswe", padx=10)
+
         self.window.grid()
 
-    def startRecord(self ,skaterId: str):
-        deviceId = self.device.deviceId()
+    def startRecord(self ,skaterId: str, skaterName: str):
+        deviceId = self.device.deviceId
         new_training = TrainingData(0, skaterId, 0, deviceId)
         self.db_manager.set_current_record(deviceId, self.db_manager.save_training_data(new_training))
         recordStarted = self.device.startRecord()
-        self.event.set()
-        self.frame.destroy()
+        self.canvas.destroy()
+        self.label.destroy()
         self.frame = ttkb.Frame(self.window)
         if recordStarted :
-            message = f"Record started on sensor {self.deviceTag}"
+            message = f"Record started on sensor {self.deviceTag} for {skaterName}"
         else : 
             message = "Error during process, cannot start the recording"
         label = ttkb.Label(self.frame, text=message, font=Font(self.window, size=20, weight=BOLD))
         label.grid()
-        self.frame.grid()
+        self.frame.grid(row=1,column=0)
         self.window.update()
         time.sleep(1)
         self.window.destroy()
+    
+    def _bound_to_mousewheel(self, event):
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _unbound_to_mousewheel(self, event):
+        self.canvas.unbind_all("<MouseWheel>")
+
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    def on_closing(self):
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.window.destroy()

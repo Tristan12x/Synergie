@@ -107,13 +107,15 @@ class DatabaseManager:
     def set_current_record(self, device_id, current_record) -> None:
         self.db.collection("dots").document(device_id).update({"current_record" : firestore.ArrayUnion([current_record])})
 
-    def get_current_record(self, device_id) -> str:
+    def get_current_record(self, deviceId) -> str:
         try:
-            trainingId = self.db.collection("dots").document(device_id).get().get("current_record")[-1]
-            self.db.collection("dots").document(device_id).update({"current_record" : firestore.ArrayRemove([trainingId])})
+            trainingId = self.db.collection("dots").document(deviceId).get().get("current_record")[-1]
             return trainingId
         except:
             return ""
+        
+    def remove_current_record(self, deviceId, trainingId):
+        self.db.collection("dots").document(deviceId).update({"current_record" : firestore.ArrayRemove([trainingId])})
 
     def get_bluetooth_address(self, device_list : List[str]) -> List[str]:
         bluetooth_list = []
