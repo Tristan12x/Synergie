@@ -1,5 +1,6 @@
 import threading
 import time
+from PIL import Image, ImageTk
 from tkinter.font import BOLD, Font
 import ttkbootstrap as ttkb
 
@@ -11,7 +12,11 @@ class StopingPage:
         self.device = device
         self.db_manager = db_manager
         self.deviceTag = self.device.deviceTagName
-        self.window = ttkb.Toplevel(title="Confirmation", size=(1000,400))
+        self.window = ttkb.Toplevel(title="Confirmation", size=(1000,400), topmost=True)
+        self.window.place_window_center()
+        ico = Image.open('img/Logo_s2mJUMP_RGB.png')
+        photo = ImageTk.PhotoImage(ico)
+        self.window.wm_iconphoto(False, photo)
         self.window.grid_rowconfigure(0, weight = 1)
         self.window.grid_columnconfigure(0, weight = 1)
         self.frame = ttkb.Frame(self.window)

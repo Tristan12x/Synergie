@@ -41,7 +41,8 @@ class DotDevice(XsDotCallback):
         else:
             self.recordingCount = self.usbDevice.recordingCount()
         self.isPlugged = True
-        
+        self.timingRecord = datetime.now().timestamp()
+
         self.loadImages()
         self.currentImage = self.imageActive
 
@@ -99,6 +100,8 @@ class DotDevice(XsDotCallback):
         if not self.btDevice.startRecording():
             self.initializeBt()
             self.isRecording = self.btDevice.startRecording()
+        if self.isRecording:
+            self.timingRecord = datetime.now().timestamp()
         return self.isRecording
 
     def stopRecord(self):

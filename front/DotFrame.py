@@ -1,3 +1,4 @@
+from datetime import datetime
 from tkinter.font import BOLD, Font
 import ttkbootstrap as ttkb
 
@@ -27,7 +28,13 @@ class DotFrame(ttkb.Frame):
             recording = self.device.recordingCount
         self.recordsLabel = ttkb.Label(self, text=f"Records stocked : {recording}", font=labelFont)
         self.recordsLabel.grid(row=3, column=0, sticky="w")
-        self.recordingLabel = ttkb.Label(self, text=f"Recording : {self.device.isRecording}", font=labelFont)
+        if self.device.isRecording:
+            duration = datetime.now().timestamp() - self.device.timingRecord
+            displayTime = '{:02d}:{:02d}'.format(int(duration//60), int(duration%60))
+            recordMessage = f"Recording : True\n    {displayTime}"
+        else:
+            recordMessage = "Recording : False"
+        self.recordingLabel = ttkb.Label(self, text=recordMessage, font=labelFont)
         self.recordingLabel.grid(row=4, column=0, sticky="w")
         self.grid(row=0, column=0)
     
@@ -40,4 +47,10 @@ class DotFrame(ttkb.Frame):
         else: 
             recording = self.device.recordingCount
         self.recordsLabel.configure({"text" : f"Number of records : {recording}"})
-        self.recordingLabel.configure({"text" : f"Recording : {self.device.isRecording}"})
+        if self.device.isRecording:
+            duration = datetime.now().timestamp() - self.device.timingRecord
+            displayTime = '{:02d}:{:02d}'.format(int(duration//60), int(duration%60))
+            recordMessage = f"Recording : True\n    {displayTime}"
+        else:
+            recordMessage = "Recording : False"
+        self.recordingLabel.configure({"text" : recordMessage})

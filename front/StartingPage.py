@@ -1,9 +1,9 @@
 import time
 from tkinter import VERTICAL
+from PIL import Image, ImageTk
 from tkinter.font import BOLD, Font
 from math import ceil
 import ttkbootstrap as ttkb
-import tkinter.messagebox as messagebox
 
 from core.utils.DotDevice import DotDevice
 from core.database.DatabaseManager import DatabaseManager, TrainingData
@@ -15,8 +15,11 @@ class StartingPage:
         self.deviceTag = self.device.deviceTagName
         self.skaters = db_manager.get_all_skaters()
 
-        self.window = ttkb.Toplevel(title="Confirmation", size=(1400,400))
-        self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.window = ttkb.Toplevel(title="Confirmation", size=(1400,400), topmost=True)
+        self.window.place_window_center()
+        ico = Image.open('img/Logo_s2mJUMP_RGB.png')
+        photo = ImageTk.PhotoImage(ico)
+        self.window.wm_iconphoto(False, photo)
         self.window.grid_rowconfigure(0, weight=0)
         self.window.grid_rowconfigure(1, weight=1)
         self.window.grid_columnconfigure(0, weight=1, pad=20)
@@ -89,7 +92,3 @@ class StartingPage:
 
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-    
-    def on_closing(self):
-        if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            self.window.destroy()
