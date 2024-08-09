@@ -7,6 +7,7 @@ import movelladot_pc_sdk
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont, ImageTk
+from constants import *
 
 from core.data_treatment.data_generation.exporter import export
 from core.database.DatabaseManager import DatabaseManager, JumpData
@@ -170,6 +171,7 @@ class DotDevice(XsDotCallback):
         try:
             df = export(skater_id, df)
             print("End of process")
+            trainingJumps = []
             for iter,row in df.iterrows():
                 jump_time_min, jump_time_sec = row["videoTimeStamp"].split(":")
                 jump_time = '{:02d}:{:02d}'.format(int(jump_time_min), int(jump_time_sec))
@@ -178,8 +180,9 @@ class DotDevice(XsDotCallback):
                     val_rot = np.ceil(val_rot)
                 else:
                     val_rot = np.ceil(val_rot-0.5)+0.5
-                jump_data = JumpData(0, training_id, int(row["type"]), val_rot, bool(row["success"]), jump_time, float(row["rotation_speed"]), float(row["length"]))
-                self.db_manager.save_jump_data(jump_data)
+                jump_data = JumpData(0, training_id, jumpType(int(row["type"])).name, val_rot, bool(row["success"]), jump_time, float(row["rotation_speed"]), float(row["length"]))
+                trainingJumps.append(self.db_manager.save_jump_data(jump_data))
+            self.db_manager.add_jumps_to_training(training_id, trainingJumps)
         except:
             pass
         

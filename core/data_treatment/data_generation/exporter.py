@@ -63,11 +63,10 @@ def old_export(folder_name: str, sampleTimeFineSynchro: int = 0):
     :param sampleTimeFineSynchro: the timefinesample of the synchro tap
     :return:
     """
+    saving_path = f"data/pending/{folder_name}"
 
     folder_name = f"data/raw/{folder_name}"
     
-    saving_path = f"data/pending/{folder_name}"
-
     if not os.path.exists(saving_path):
         os.makedirs(saving_path)
 
@@ -79,7 +78,8 @@ def old_export(folder_name: str, sampleTimeFineSynchro: int = 0):
         if file.endswith(".csv"):
 
             print(os.path.join(folder_name, file))
-            session = trainingSession(os.path.join(folder_name, file), sampleTimeFineSynchro)
+            df = pd.read_csv(os.path.join(folder_name, file))
+            session = trainingSession(df, sampleTimeFineSynchro)
             skater_name = file.split('_')[0]
 
             # session.plot()
@@ -99,7 +99,7 @@ def old_export(folder_name: str, sampleTimeFineSynchro: int = 0):
             filename = os.path.join(saving_path, str(jump_id) + ".csv")
             i.generate_csv(filename)
             # since videoTimeStamp is for user input, I can change it's value to whatever I want
-            jumpDictCSV.append({'path': str(jump_id) + ".csv", 'videoTimeStamp': mstostr(i.startTimestamp), 'type': i.type.value, 'skater_name': i.skater_name, "rotations": "{:.1f}".format(i.rotation), "length": i.length})
+            jumpDictCSV.append({'path': str(jump_id) + ".csv", 'videoTimeStamp': mstostr(i.startTimestamp), 'type': i.type.value, 'skater': i.skater_name,"sucess": 2,"rotations": "{:.1f}".format(i.rotation)})
 
     jumpListdf = pd.DataFrame(jumpDictCSV)
     jumpListdf = jumpListdf.sort_values(by=['videoTimeStamp'])

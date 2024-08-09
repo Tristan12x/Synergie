@@ -45,7 +45,7 @@ class MainPage:
     def make_export_button(self):
         self.estimatedTime = self.dot_manager.getExportEstimatedTime()
         self.exportFrame = ttkb.Frame(self.frame)
-        ttkb.Button(self.exportFrame, text=f'Export data from all dots, estimated time : {round(self.estimatedTime,0)} min', style="home.TButton", command=self.export_all_dots).grid(row=0, column=0)
+        ttkb.Button(self.exportFrame, text=f'Export data from all sensors, estimated time : {round(self.estimatedTime,0)} min', style="home.TButton", command=self.export_all_dots).grid(row=0, column=0)
         self.saveFile = ttkb.Checkbutton(self.exportFrame, text="Save extra data (for research)")
         self.saveFile.state(['!alternate'])
         self.saveFile.grid(row=1,column=0)

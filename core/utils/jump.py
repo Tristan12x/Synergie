@@ -42,7 +42,7 @@ class Jump:
         # initial frame is the reference frame, I want to compute rotations around the "Euler_X" axis
         df_rots = df[["SampleTimeFine", "Gyr_X"]]
         def check(s):
-            return math.isinf(s["Gyr_X"])
+            return math.isinf(s["Gyr_X"]) or np.abs(s["Gyr_X"]) > 1e6
 
         df_rots = df_rots.drop(df_rots[df_rots.apply(check,axis=1)].index)
         n = len(df_rots)
@@ -79,3 +79,11 @@ class Jump:
             resampled_df = pd.concat([takeoff_df,reception_df])
 
         return resampled_df
+
+    def generate_csv(self, path: str):
+        """
+        exports the jump to a csv file
+        :param path:
+        :return:
+        """
+        self.df.to_csv(path, index=False)

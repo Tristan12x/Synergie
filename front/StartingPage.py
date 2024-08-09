@@ -67,7 +67,7 @@ class StartingPage:
 
     def startRecord(self ,skaterId: str, skaterName: str):
         deviceId = self.device.deviceId
-        new_training = TrainingData(0, skaterId, 0, deviceId)
+        new_training = TrainingData(0, skaterId, 0, deviceId, [])
         self.db_manager.set_current_record(deviceId, self.db_manager.save_training_data(new_training))
         recordStarted = self.device.startRecord()
         self.canvas.destroy()
@@ -82,6 +82,7 @@ class StartingPage:
         self.frame.grid(row=1,column=0)
         self.window.update()
         time.sleep(1)
+        self.canvas.destroy()
         self.window.destroy()
     
     def _bound_to_mousewheel(self, event):
