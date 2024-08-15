@@ -8,17 +8,13 @@ def lstm():
 
     model.add(keras.layers.Dropout(0.4))
     model.add(keras.layers.Dense(64, activation='relu'))
-    model.add(keras.layers.Dropout(0.2))
-    model.add(keras.layers.Dense(48, activation='relu'))
-    model.add(keras.layers.Dropout(0.2))
-    model.add(keras.layers.Dense(32, activation='relu'))
-    model.add(keras.layers.Dropout(0.2))
+    model.add(keras.layers.Dropout(0.5))
     model.add(keras.layers.Dense(16, activation='relu'))
     model.add(keras.layers.Dropout(0.2))
     # softmax
     model.add(keras.layers.Dense(2, activation='relu'))
 
-    optimizer = keras.optimizers.Adam(learning_rate=0.000001)
+    optimizer = keras.optimizers.Adam(learning_rate=0.00001)
 
     model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 

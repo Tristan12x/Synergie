@@ -1,6 +1,7 @@
 import time
 from PIL import Image, ImageTk
 import ttkbootstrap as ttkb
+from tkinter import messagebox
 import threading
 
 from core.data_treatment.data_generation.exporter import export
@@ -31,7 +32,14 @@ class App:
             self.root.after(100, self.checkInit)
 
     def initialize(self, initialEvent : threading.Event):
-        self.dot_manager.firstConnection()
+        (check, unconnectedDevice) = self.dot_manager.firstConnection()
+        while not check:
+            deviceMessage = f"{unconnectedDevice[0]}"
+            for deviceTag in unconnectedDevice[1:]:
+                deviceMessage = deviceMessage + " ," + deviceTag 
+            messagebox.askretrycancel("Connection", f"Please reconnect sensor {deviceMessage}")
+            (check, unconnectedDevice) = self.dot_manager.firstConnection()
+
         initialEvent.set()
 
         usb_detection_thread = threading.Thread(target=self.checkUsbDots, args=([self.startStopping, self.startStarting]))

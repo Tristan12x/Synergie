@@ -154,6 +154,15 @@ class DotDevice(XsDotCallback):
                         columnSelected = ["PacketCounter","SampleTimeFine","Euler_X","Euler_Y","Euler_Z","Acc_X","Acc_Y","Acc_Z","Gyr_X","Gyr_Y","Gyr_Z"]
                     df = pd.DataFrame.from_records(self.packetsReceived, columns=columnSelected)
                     date = datetime.fromtimestamp(dateRecord).strftime("%Y_%m_%d")
+                    startSampleTime = df["SampleTimeFine"][0]
+                    newSampleTimeFine = []
+                    for time in df["SampleTimeFine"]:
+                        newTime = time - startSampleTime
+                        if newTime < 0:
+                            newSampleTimeFine.append(newTime + 2**32)
+                        else:
+                            newSampleTimeFine.append(newTime)
+                    df["SampleTimeFine"] = newSampleTimeFine
                     os.makedirs(f"data/raw/{date}", exist_ok = True)
                     df.to_csv(f"data/raw/{date}/{trainingId}.csv", index=False)
 
@@ -172,17 +181,27 @@ class DotDevice(XsDotCallback):
             df = export(skater_id, df)
             print("End of process")
             trainingJumps = []
+            unknow_rotation = []
             for iter,row in df.iterrows():
                 jump_time_min, jump_time_sec = row["videoTimeStamp"].split(":")
                 jump_time = '{:02d}:{:02d}'.format(int(jump_time_min), int(jump_time_sec))
                 val_rot = float(row["rotations"])
-                if row["type"] != 5:
-                    val_rot = np.ceil(val_rot)
+                if val_rot >= 0.5:
+                    if row["type"] != 5:
+                        val_rot = np.ceil(val_rot)
+                    else:
+                        val_rot = np.ceil(val_rot-0.5)+0.5
+                    jump_data = JumpData(0, training_id, jumpType(int(row["type"])).name, val_rot, bool(row["success"]), jump_time, float(row["rotation_speed"]), float(row["length"]))
+                    trainingJumps.append(self.db_manager.save_jump_data(jump_data))
                 else:
-                    val_rot = np.ceil(val_rot-0.5)+0.5
-                jump_data = JumpData(0, training_id, jumpType(int(row["type"])).name, val_rot, bool(row["success"]), jump_time, float(row["rotation_speed"]), float(row["length"]))
-                trainingJumps.append(self.db_manager.save_jump_data(jump_data))
-            self.db_manager.add_jumps_to_training(training_id, trainingJumps)
+                    jump_data = JumpData(0, training_id, jumpType(int(row["type"])).name, 0, bool(row["success"]), jump_time, float(row["rotation_speed"]), float(row["length"]))
+                    unknow_rotation.append(jump_data)
+            if trainingJumps != []:
+                self.db_manager.add_jumps_to_training(training_id, trainingJumps)
+            else:
+                for jump in unknow_rotation:
+                    trainingJumps.append(self.db_manager.save_jump_data(jump))
+                self.db_manager.add_jumps_to_training(training_id, trainingJumps)
         except:
             pass
         

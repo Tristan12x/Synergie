@@ -24,19 +24,17 @@ class Jump:
         # timestamps are in microseconds, I want to have the lenghs in seconds
         self.length = round(np.longlong(df['ms'][end] - df['ms'][start]) / 1000,3)
 
-        self.rotation = self.calculate_rotation(df[self.start:self.end].copy().reset_index(),
-                                                df.iloc[constants.SYNCHROFRAME])
+        self.rotation = self.calculate_rotation(df[self.start:self.end].copy().reset_index())
 
         self.df = self.dynamic_resize(df)  # The dataframe containing the jump
 
         self.max_rotation_speed = round(df['Gyr_X_unfiltered'][start:end].abs().max()/360,1)
 
-    def calculate_rotation(self, df, initial_frame):
+    def calculate_rotation(self, df):
         """
         calculates the rotation in degrees around the vertical axis, the initial frame is a frame where the skater is
         standing still
         :param df: the dataframe containing the jump
-        :param initial_frame: the frame where the skater is standing still
         :return: the absolute value of the rotation in degrees
         """
         # initial frame is the reference frame, I want to compute rotations around the "Euler_X" axis

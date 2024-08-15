@@ -27,46 +27,48 @@ class DotManager:
         self.devices : List[DotDevice] = []
         self.previousConnected : List[DotDevice] = []
 
-    def firstConnection(self):
-        check = False
-        while not check:
-            check = True
-            asyncio.run(bluetooth_power(False))
-            xdpcHandler = XdpcHandler()
-            if not xdpcHandler.initialize():
-                xdpcHandler.cleanup()
-            xdpcHandler.detectUsbDevices()
-            self.portInfoUsb = {}
-            while len(xdpcHandler.connectedUsbDots()) < len(xdpcHandler.detectedDots()):
-                xdpcHandler.connectDots()
-            for device in xdpcHandler.connectedUsbDots():
-                self.portInfoUsb[str(device.deviceId())] = device.portInfo()
+    def firstConnection(self) -> tuple[bool, List[str]]:
+        check = True
+        asyncio.run(bluetooth_power(False))
+        xdpcHandler = XdpcHandler()
+        if not xdpcHandler.initialize():
             xdpcHandler.cleanup()
+        xdpcHandler.detectUsbDevices()
+        self.portInfoUsb = {}
+        while len(xdpcHandler.connectedUsbDots()) < len(xdpcHandler.detectedDots()):
+            xdpcHandler.connectDots()
+        for device in xdpcHandler.connectedUsbDots():
+            self.portInfoUsb[str(device.deviceId())] = device.portInfo()
+        xdpcHandler.cleanup()
 
-            asyncio.run(bluetooth_power(True))
-            xdpcHandler = XdpcHandler()
-            if not xdpcHandler.initialize():
-                xdpcHandler.cleanup()
-            xdpcHandler.scanForDots()
-            self.portInfoBt = xdpcHandler.detectedDots()
+        asyncio.run(bluetooth_power(True))
+        xdpcHandler = XdpcHandler()
+        if not xdpcHandler.initialize():
             xdpcHandler.cleanup()
+        xdpcHandler.scanForDots()
+        self.portInfoBt = xdpcHandler.detectedDots()
+        xdpcHandler.cleanup()
 
-            for portInfoBt in self.portInfoBt:
-                device = self.db_manager.get_dot_from_bluetooth(portInfoBt.bluetoothAddress())
-                if device is None :
-                    print("Adding a new device")
-                    deviceId = self.connectNewDevice(portInfoBt)
-                else:
-                    deviceId = device.id
-                portInfoUsb = self.portInfoUsb.get(deviceId, None)
-                if portInfoUsb is not None:
-                    self.devices.append(DotDevice(portInfoUsb, portInfoBt, self.db_manager))
-                else:
-                    print(f"Please plug sensor {device.get('tag_name')}")
-                    time.sleep(5)
-                    check = False
+        unconnectedDevice = []
+
+        for portInfoBt in self.portInfoBt:
+            device = self.db_manager.get_dot_from_bluetooth(portInfoBt.bluetoothAddress())
+            if device is None :
+                print("Adding a new device")
+                deviceId = self.connectNewDevice(portInfoBt)
+            else:
+                deviceId = device.id
+            portInfoUsb = self.portInfoUsb.get(deviceId, None)
+            if portInfoUsb is not None:
+                self.devices.append(DotDevice(portInfoUsb, portInfoBt, self.db_manager))
+            else:
+                print(f"Please plug sensor {device.get('tag_name')}")
+                unconnectedDevice.append(device.get('tag_name'))
+                time.sleep(5)
+                check = False
 
         self.previousConnected = self.devices
+        return (check, unconnectedDevice)
     
     def checkDevices(self) -> tuple[List[DotDevice], List[DotDevice]]:
         connected : List[DotDevice] = []
