@@ -57,10 +57,6 @@ class DatabaseManager:
         except :
             pass
         self.db = firestore.client()
-
-    def save_skater_data(self, data : SkaterData) -> int:
-        add_time, new_ref = self.db.collection("skaters").add(data.to_dict())
-        return new_ref.id
     
     def save_training_data(self, data : TrainingData) -> int:
         add_time, new_ref = self.db.collection("trainings").add(data.to_dict())
@@ -111,3 +107,6 @@ class DatabaseManager:
     
     def add_jumps_to_training(self, trainingId : str, trainingJumps : List[str]):
         self.db.collection("trainings").document(trainingId).update({"training_jumps" : trainingJumps})
+    
+    def findUserByEmail(self, email):
+        return self.db.collection("users").where(filter=firestore.firestore.FieldFilter("email", "==", email)).get()

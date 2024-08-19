@@ -4,6 +4,7 @@ import ttkbootstrap as ttkb
 from tkinter import messagebox
 import threading
 
+from front.ConnectionPage import ConnectionPage
 from core.data_treatment.data_generation.exporter import export
 from core.database.DatabaseManager import *
 from core.utils.DotManager import DotManager
@@ -18,6 +19,20 @@ class App:
         self.dot_manager = DotManager(self.db_manager)
         self.root = root
 
+        self.connectionPage = ConnectionPage(self.root, self.db_manager)
+        self.checkConnection()
+
+    def checkConnection(self):
+        if self.connectionPage.userConnected != "":
+            self.userConnected = self.connectionPage.userConnected
+            print(self.userConnected)
+            self.connectionPage.frame.destroy()
+            self.root.update()
+            self.launchMainPage()
+        else:
+            self.root.after(100, self.checkConnection)
+
+    def launchMainPage(self):
         self.mainPage = MainPage([], self.dot_manager, self.db_manager, self.root)
         self.initialEvent = threading.Event()
         threading.Thread(target=self.initialize, args=([self.initialEvent]), daemon=True).start()
