@@ -27,7 +27,10 @@ def gather_jumps(df: pd.DataFrame) -> list[Jump]:
                 break
 
         for i in range(len(begin)):
-            jumps.append(Jump(begin[i], end[i], df))
+            combinate = False
+            if i>0:
+                combinate = (begin[i] - begin[i-1]) < 180
+            jumps.append(Jump(begin[i], end[i], df, combinate))
 
     return jumps
 

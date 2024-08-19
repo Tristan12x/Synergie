@@ -34,7 +34,8 @@ def export(skater_id, df: pd.DataFrame, sampleTimeFineSynchro: int = 0) -> int:
     for jump in session.jumps:
         jump_copy = copy.deepcopy(jump)
         jump_copy.skater_name = skater_id
-        jump_copy.df = jump.df.copy(deep=True)
+        jump_copy.df_type = jump.df_type.copy(deep=True)
+        jump_copy.df_success = jump.df_success.copy(deep=True)
         jumpList.append(jump_copy)
         predict_jump.append(jump_copy.df)
         

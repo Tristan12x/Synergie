@@ -81,17 +81,21 @@ def main():
         print(error_success)
 
     if "-repredict" in sys.argv:
-        for day in os.listdir("data/raw"):
+        for day in os.listdir("data/new"):
             print(day)
-            for hour in os.listdir(f"data/raw/{day}"):
+            for hour in os.listdir(f"data/new/{day}"):
                 print(hour)
-                if os.path.isdir(f"data/raw/{day}/{hour}"):
-                    for training in os.listdir(f"data/raw/{day}/{hour}"):
-                        df = pd.read_csv(f"data/raw/{day}/{hour}/{training}")
+                if os.path.isdir(f"data/new/{day}/{hour}"):
+                    for trainings in os.listdir(f"data/new/{day}/{hour}"):
+                        df = pd.read_csv(f"data/new/{day}/{hour}/{trainings}")
                         predict_training(df)
                 else:
-                    df = pd.read_csv(f"data/raw/{day}/{hour}")
+                    df = pd.read_csv(f"data/new/{day}/{hour}")
                     predict_training(df)
+    
+    if "-rep" in sys.argv:
+        for session in constants.sessions.values():
+            old_export(session["path"], session["sample_time_fine_synchro"])
 
 if __name__ == "__main__":
     main()

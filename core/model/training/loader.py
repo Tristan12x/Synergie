@@ -47,6 +47,7 @@ class Loader:
         mainFrame = pd.read_csv(main_csv)
 
         jumps = []
+        jumps_success = []
         labelstype = []
         labelssuccess = []
         more_fall = []
@@ -56,7 +57,7 @@ class Loader:
         for index, row in mainFrame.iterrows():
             if row["success"] != 2 and row["type"] != 8:
                 # print(row)
-                jumpFrame = pd.read_csv(os.path.join(folder_path, row['path']))
+                jumpFrame = pd.read_csv(row['path'])
                 jumpFrame = jumpFrame[fields_to_keep]
 
                 # make (2 * n) + 1 rows equal 2 * n
@@ -65,11 +66,13 @@ class Loader:
                     if i % 2 == 1: # if i is odd, it should be equal to previous row
                         jumpFrame.loc[i] = jumpFrame.loc[i - 1]
 
-                jumps.append(jumpFrame)
+                jumps.append(jumpFrame[:240].copy())
+                jumps_success.append(jumpFrame[120:].copy().reset_index())
                 labelstype.append(row['type'])
                 labelssuccess.append(row['success'])
 
         jumps = np.array(jumps)
+        jumps_success = np.array(jumps_success)
 
         # label one hot encoding
         labelEncoder = LabelEncoder()
@@ -79,8 +82,9 @@ class Loader:
         # remove lines with nan field
 
         jumps = np.nan_to_num(jumps, nan=0.0, posinf=0.0, neginf=0.0)
-
         jumps = self._normalize(jumps)
+        jumps_success = np.nan_to_num(jumps_success, nan=0.0, posinf=0.0, neginf=0.0)
+        jumps_success = self._normalize(jumps_success)
 
         # make a training and validation dataset
 
@@ -91,7 +95,7 @@ class Loader:
 
         self.val_dataset = tf.data.Dataset.from_tensor_slices((features_val, labels_val)).batch(16)
 
-        features_train_success, features_val_success, labels_train_success, labels_val_success = train_test_split(jumps, labelssuccess, train_size=train_ratio, shuffle=True)
+        features_train_success, features_val_success, labels_train_success, labels_val_success = train_test_split(jumps_success, labelssuccess, train_size=train_ratio, shuffle=True)
 
         self.features_test_success, self.labels_test_success = features_val_success, labels_val_success
         self.features_train_success, self.labels_train_success = features_train_success, labels_train_success 

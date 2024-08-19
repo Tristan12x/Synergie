@@ -6,7 +6,7 @@ from constants import jumpType,jumpSuccess
 import math
 
 class Jump:
-    def __init__(self, start: int, end: int, df: pd.DataFrame, jump_type: jumpType = jumpType.NONE, jump_success: jumpSuccess = jumpSuccess.NONE):
+    def __init__(self, start: int, end: int, df: pd.DataFrame, combinate : bool, jump_type: jumpType = jumpType.NONE, jump_success: jumpSuccess = jumpSuccess.NONE):
         """
         :param start: the frame index where the jump starts
         :param end: the frame index where the jump ends
@@ -17,6 +17,7 @@ class Jump:
         self.end = end
         self.type = jump_type
         self.success = jump_success
+        self.combinate = combinate
 
         self.startTimestamp = (df['SampleTimeFine'][start] - df['SampleTimeFine'][0]) / 1000
         self.endTimestamp = (df['SampleTimeFine'][end] - df['SampleTimeFine'][0]) / 1000
@@ -26,7 +27,10 @@ class Jump:
 
         self.rotation = self.calculate_rotation(df[self.start:self.end].copy().reset_index())
 
-        self.df = self.dynamic_resize(df)  # The dataframe containing the jump
+        self.df = self.dynamic_resize(df) # The dataframe containing the jump
+        self.df["Combination"] = [int(self.combinate)]*len(self.df)
+        self.df_success = self.df[120:] 
+        self.df_type = self.df[:240]
 
         self.max_rotation_speed = round(df['Gyr_X_unfiltered'][start:end].abs().max()/360,1)
 
@@ -55,26 +59,12 @@ class Jump:
 
     def dynamic_resize(self, df: pd.DataFrame = None):
         """
-        normalize the jump to a given time fram. I will need to resample the data so the take-off is at frame 200,
-        and landing at frame 300
+        normalize the jump to a given time frame. It takes 120 frames (2s) before the takeoff and 180 frames after (3s),
+        so that we have at least 120 frames (2s) after the landing.
         :param df: the dataframe containing the session where the jump is
-        :param length_between_takeoff_and_reception: the number of frames between the takeoff  and the reception
-        The middle of the jump is the beginning (takeoff), middle + length_between_takeoff_and_reception is the reception
-        The timeframe should be a resampled version of the original timeframe
         :return: the new dataframe
         """
-
-        begin_df = self.start - 200
-        end_df = self.end + 100
-        timelapse = np.arange(begin_df,end_df)
-
-        length_min = 100 - (self.end - self.start)
-        if length_min > 0:
-            resampled_df = df[begin_df:end_df+length_min].copy(deep=True)
-        else:
-            takeoff_df = df[begin_df:self.start +50].copy(deep=True)
-            reception_df = df[self.end-50:end_df].copy(deep=True)
-            resampled_df = pd.concat([takeoff_df,reception_df])
+        resampled_df = df[self.start - 120:self.start + 180].copy(deep=True)
 
         return resampled_df
 
