@@ -25,7 +25,6 @@ class App:
     def checkConnection(self):
         if self.connectionPage.userConnected != "":
             self.userConnected = self.connectionPage.userConnected
-            print(self.userConnected)
             self.connectionPage.frame.destroy()
             self.root.update()
             self.launchMainPage()
@@ -82,7 +81,7 @@ class App:
         StopingPage(device, self.db_manager)
     
     def startStarting(self, device):
-        StartingPage(device, self.db_manager)
+        StartingPage(device, self.db_manager, self.userConnected)
 
 root = ttkb.Window(title="Synergie", themename="minty")
 myapp = App(root)

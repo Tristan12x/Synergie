@@ -110,3 +110,9 @@ class DatabaseManager:
     
     def findUserByEmail(self, email):
         return self.db.collection("users").where(filter=firestore.firestore.FieldFilter("email", "==", email)).get()
+    
+    def getAllSkaterFromCoach(self, coachId) -> List[SkaterData]:
+        skatersData = []
+        for skater in self.db.collection("users").document(coachId).get().get("access"):
+            skatersData.append(SkaterData(skater, self.db.collection("users").document(skater).get().get("name")))
+        return skatersData

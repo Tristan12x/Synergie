@@ -9,11 +9,11 @@ from core.utils.DotDevice import DotDevice
 from core.database.DatabaseManager import DatabaseManager, TrainingData
 
 class StartingPage:
-    def __init__(self, device : DotDevice, db_manager : DatabaseManager) -> None:
+    def __init__(self, device : DotDevice, db_manager : DatabaseManager, userConnected : str) -> None:
         self.device = device
         self.db_manager = db_manager
         self.deviceTag = self.device.deviceTagName
-        self.skaters = db_manager.get_all_skaters()
+        self.skaters = self.db_manager.getAllSkaterFromCoach(userConnected)
 
         self.window = ttkb.Toplevel(title="Confirmation", size=(1400,400), topmost=True)
         self.window.place_window_center()
