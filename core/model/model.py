@@ -3,16 +3,14 @@ from keras import layers
 
 def lstm():
     model = keras.models.Sequential()
-    model.add(keras.layers.LSTM(128, input_shape=(
-    180, 10)))  # , return_sequences=True)) # considering the length of the arrays is going to be the same
-
+    model.add(keras.layers.LSTM(128, return_sequences=True, input_shape=(180, 10)))
+    model.add(keras.layers.LSTM(64))
     model.add(keras.layers.Dropout(0.4))
     model.add(keras.layers.Dense(64, activation='relu'))
-    model.add(keras.layers.Dropout(0.5))
+    model.add(keras.layers.Dropout(0.4))
     model.add(keras.layers.Dense(16, activation='relu'))
     model.add(keras.layers.Dropout(0.2))
-    # softmax
-    model.add(keras.layers.Dense(2, activation='relu'))
+    model.add(keras.layers.Dense(1, activation='sigmoid'))
 
     optimizer = keras.optimizers.Adam(learning_rate=0.00001)
 

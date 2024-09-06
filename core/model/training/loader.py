@@ -54,9 +54,12 @@ class Loader:
 
         fields_to_keep = constants.fields_to_keep
 
+        self.path_jumps = []
+
         for index, row in mainFrame.iterrows():
             if row["success"] != 2 and row["type"] != 8:
                 # print(row)
+                self.path_jumps.append(row["path"])
                 jumpFrame = pd.read_csv(row['path'])
                 jumpFrame = jumpFrame[fields_to_keep]
 
@@ -82,7 +85,7 @@ class Loader:
         # remove lines with nan field
 
         jumps = np.nan_to_num(jumps, nan=0.0, posinf=0.0, neginf=0.0)
-        jumps = self._normalize(jumps)
+        #jumps = self._normalize(jumps)
         jumps_success = np.nan_to_num(jumps_success, nan=0.0, posinf=0.0, neginf=0.0)
         jumps_success = self._normalize(jumps_success)
 
