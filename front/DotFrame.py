@@ -18,7 +18,7 @@ class DotFrame(ttkb.Frame):
         self.imageLabel = ttkb.Label(self, image=self.device.currentImage)
         self.imageLabel.grid(row=0, column=0)
         labelFont = Font(self, size=15, weight=BOLD)
-        self.pluggedLabel = ttkb.Label(self, text=f"Branché : {self.device.isPlugged}", font=labelFont)
+        self.pluggedLabel = ttkb.Label(self, text=f"En charge : {self.device.isPlugged}", font=labelFont)
         self.pluggedLabel.grid(row=1, column=0, sticky="w")
         self.batteryLabel = ttkb.Label(self, text=f"Batterie : {self.device.batteryLevel}%", font=labelFont)
         self.batteryLabel.grid(row=2, column=0, sticky="w")
@@ -40,7 +40,7 @@ class DotFrame(ttkb.Frame):
     
     def updateDot(self):
         self.imageLabel.configure({"image" : self.device.currentImage})
-        self.pluggedLabel.configure({"text" : f"Branché : {self.device.isPlugged}"})
+        self.pluggedLabel.configure({"text" : f"En charge : {self.device.isPlugged}"})
         self.batteryLabel.configure({"text" : f"Batterie : {self.device.batteryLevel}%"})
         if self.device.isRecording:
             recording = "en cours" 

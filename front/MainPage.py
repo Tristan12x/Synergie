@@ -49,6 +49,8 @@ class MainPage:
         self.make_export_button()
 
         labelFont = Font(self.root, size=15, weight=BOLD)
+        buttonStyle = ttkb.Style()
+        buttonStyle.configure('home.TButton', font=Font(self.frame, size=20, weight=BOLD))
         usageFrame = ttkb.Frame(self.frame)
         usageFrame.grid_columnconfigure(0, weight=1, pad=200)
         usageFrame.grid_columnconfigure(1, weight=1)

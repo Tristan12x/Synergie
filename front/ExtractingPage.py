@@ -12,7 +12,7 @@ class ExtractingPage:
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_rowconfigure(0, weight=1)
         self.window.grid_rowconfigure(1, weight=1)
-        self.text = ttkb.StringVar(self.window, value = f"Extraction des données du capteur {self.deviceTag} \nNe pas deconnecter ce capteur")
+        self.text = ttkb.StringVar(self.window, value = f"Extraction des données du capteur {self.deviceTag} \nNe pas déconnecter ce capteur")
         self.label = ttkb.Label(self.window, textvariable=self.text, font=Font(self.window, size=20, weight=BOLD))
         self.label.grid(row=0,column=0)
         self.max_val = 60*estimatedTime
