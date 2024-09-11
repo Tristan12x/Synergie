@@ -18,7 +18,10 @@ class StartingPage:
 
         self.window = ttkb.Toplevel(title="Confirmation", size=(1400,400), topmost=True)
         self.window.place_window_center()
-        ico = Image.open(f'{sys._MEIPASS}/img/Logo_s2mJUMP_RGB.png')
+        try:
+            ico = Image.open(f'{sys._MEIPASS}/img/Logo_s2mJUMP_RGB.png')
+        except:
+            ico = Image.open(f'img/Logo_s2mJUMP_RGB.png')
         photo = ImageTk.PhotoImage(ico)
         self.window.wm_iconphoto(False, photo)
         self.window.grid_rowconfigure(0, weight=0)

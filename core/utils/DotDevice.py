@@ -79,7 +79,10 @@ class DotDevice(XsDotCallback):
     
     def loadImages(self):
         fontTag = ImageFont.truetype(font="arialbd.ttf",size=60)
-        imgActive = Image.open(f"{sys._MEIPASS}/img/Dot_active.png")
+        try:
+            imgActive = Image.open(f"{sys._MEIPASS}/img/Dot_active.png")
+        except:
+            imgActive = Image.open(f"img/Dot_active.png")
         d = ImageDraw.Draw(imgActive)
         text = self.deviceTagName
         x = 0
@@ -91,7 +94,10 @@ class DotDevice(XsDotCallback):
         imgActive = imgActive.resize((116, 139))
         self.imageActive = ImageTk.PhotoImage(imgActive)
 
-        imgInactive = Image.open(f"{sys._MEIPASS}/img/Dot_inactive.png")
+        try:
+            imgInactive = Image.open(f"{sys._MEIPASS}/img/Dot_inactive.png")
+        except:
+            imgInactive = Image.open(f"img/Dot_inactive.png")
         d = ImageDraw.Draw(imgInactive)
         d.text( (x,65), text,font=fontTag, fill="black")
         imgInactive = imgInactive.resize((116, 139))
