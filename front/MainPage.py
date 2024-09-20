@@ -34,7 +34,7 @@ class MainPage:
         waitingProgress.start(10)
         self.waitingFrame.grid(row=0,column=0)
         self.frame.grid(sticky="nswe")
-    
+        
     def make_dot_page(self):
         self.frame.destroy()
         self.frame = ttkb.Frame(self.root)
